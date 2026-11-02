@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { computeSync, SyncError } from '../src/lib/sync.js';
 import { trimPlays } from '../src/lib/espn.js';
 
-const fixture = JSON.parse(readFileSync(new URL('./fixtures/summary-401810433.json', import.meta.url), 'utf8'));
+// A made-up game whose play timing comes from a real one (see scripts/make-test-game.mjs).
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/game.json', import.meta.url), 'utf8'));
 const plays = trimPlays(fixture);
 const MARGIN_MS = 10_000;
 

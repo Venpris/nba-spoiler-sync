@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { trimPlays, trimSnapshot, skewSample } from '../src/lib/espn.js';
 
-const fixture = JSON.parse(readFileSync(new URL('./fixtures/summary-401810433.json', import.meta.url), 'utf8'));
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/game.json', import.meta.url), 'utf8'));
 
 test('trimPlays keeps timing, score and text for every play', () => {
   const plays = trimPlays(fixture);
@@ -35,8 +35,11 @@ test('trimSnapshot keeps the box score and drops everything else', () => {
 
   // Team records change when a game ends, so they must not be kept.
   const text = JSON.stringify(snap);
+  assert.ok(fixture.header.competitions[0].competitors[0].record);
   assert.ok(!text.includes('"record'));
-  assert.ok(!text.includes('winprobability'));
+  assert.ok(fixture.winprobability && fixture.news);
+  assert.ok(!text.includes('homeWinPercentage'));
+  assert.ok(!text.includes('headline'));
 });
 
 test('trimSnapshot falls back to the latest play for period and clock', () => {

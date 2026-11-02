@@ -5,16 +5,16 @@ import { trimPlays, trimSnapshot } from '../src/lib/espn.js';
 import '../src/content/view.js';
 
 const View = globalThis.NSSView;
-const fixture = JSON.parse(readFileSync(new URL('./fixtures/summary-401810433.json', import.meta.url), 'utf8'));
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/game.json', import.meta.url), 'utf8'));
 const snapshot = { capturedAt: 1, ...trimSnapshot(fixture) };
 const plays = trimPlays(fixture);
-const game = { id: '401810433', shortName: 'MEM @ ORL', away: 'MEM', home: 'ORL' };
+const game = { id: '900000001', shortName: 'HAR @ MES', away: 'HAR', home: 'MES' };
 
 test('recognizes NBA game page URLs', () => {
-  assert.equal(View.nbaGameIdFromUrl('https://www.espn.com/nba/boxscore/_/gameId/401810433'), '401810433');
-  assert.equal(View.nbaGameIdFromUrl('https://www.espn.com/nba/game/_/gameId/401810433/grizzlies-magic'), '401810433');
-  assert.equal(View.nbaGameIdFromUrl('https://www.espn.com/nba/recap?gameId=401810433'), '401810433');
-  assert.equal(View.nbaGameIdFromUrl('https://www.espn.com/nfl/game/_/gameId/401810433'), null);
+  assert.equal(View.nbaGameIdFromUrl('https://www.espn.com/nba/boxscore/_/gameId/900000001'), '900000001');
+  assert.equal(View.nbaGameIdFromUrl('https://www.espn.com/nba/game/_/gameId/900000001/herons-coyotes'), '900000001');
+  assert.equal(View.nbaGameIdFromUrl('https://www.espn.com/nba/recap?gameId=900000001'), '900000001');
+  assert.equal(View.nbaGameIdFromUrl('https://www.espn.com/nfl/game/_/gameId/900000001'), null);
   assert.equal(View.nbaGameIdFromUrl('https://www.espn.com/nba/scoreboard'), null);
   assert.equal(View.pageKind('https://www.espn.com/nba/playbyplay/_/gameId/1'), 'playbyplay');
   assert.equal(View.pageKind('https://www.espn.com/nba/game/_/gameId/1'), 'gamecast');

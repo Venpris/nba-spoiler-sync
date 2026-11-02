@@ -1,12 +1,13 @@
 // Runs the real service worker against a simulated live game: ESPN's feed is replayed
 // from a finished game's play log by timestamp, on a mocked clock, while a viewer
 // watches 75 seconds behind. Checks what ESPN tabs receive never runs ahead of them.
+// The game is made up, with play timing from a real one (scripts/make-test-game.mjs).
 import 'fake-indexeddb/auto';
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const fixture = JSON.parse(readFileSync(new URL('./fixtures/summary-401810433.json', import.meta.url), 'utf8'));
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/game.json', import.meta.url), 'utf8'));
 const wallclock = new Map(fixture.plays.map((p) => [String(p.id), Date.parse(p.wallclock)]));
 const firstPlay = Math.min(...wallclock.values());
 
@@ -72,7 +73,7 @@ test('recording, syncing and what ESPN tabs receive', async () => {
   mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: START });
   globalThis.chrome = fakeChrome();
   globalThis.fetch = async (url) => {
-    assert.match(url, /summary\?event=401810433$/);
+    assert.match(url, /summary\?event=900000001$/);
     const now = Date.now();
     return {
       ok: true,
@@ -85,7 +86,7 @@ test('recording, syncing and what ESPN tabs receive', async () => {
   await settle();
 
   const ask = (msg) => new Promise((resolve) => chrome.on.message[0](msg, {}, resolve));
-  const game = { id: '401810433', name: 'Memphis Grizzlies at Orlando Magic', shortName: 'MEM VS ORL', date: '2026-01-15T19:00Z', away: 'MEM', home: 'ORL' };
+  const game = { id: '900000001', name: 'Harbor City Herons at Mesa Coyotes', shortName: 'HAR @ MES', date: '2026-01-15T19:00Z', away: 'HAR', home: 'MES' };
 
   let status = await ask({ type: 'getStatus' });
   assert.equal(status.status, 'off');
