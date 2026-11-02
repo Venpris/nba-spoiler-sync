@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>NBA Spoiler Sync</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="top">
+      <img src="../../icons/icon-32.png" alt="" width="24" height="24" />
+      <h1>NBA Spoiler Sync</h1>
+      <label class="switch" title="Turn Spoiler Sync on or off">
+        <input id="enabled" type="checkbox" disabled />
+        <span class="switch__track"><span class="switch__thumb"></span></span>
+        <span class="visually-hidden">On</span>
+      </label>
+    </header>
+
+    <section class="field">
+      <label for="game">Game you're watching</label>
+      <select id="game">
+        <option value="">Loading today's games…</option>
+      </select>
+    </section>
+
+    <section id="sync-section" class="sync" hidden>
+      <h2>Sync to your stream</h2>
+      <div class="sync__row">
+        <select id="period" aria-label="Quarter">
+          <option value="1">1st</option>
+          <option value="2">2nd</option>
+          <option value="3">3rd</option>
+          <option value="4">4th</option>
+          <option value="5">OT</option>
+          <option value="6">2OT</option>
+          <option value="7">3OT</option>
+          <option value="8">4OT</option>
+        </select>
+        <input id="clock" type="text" inputmode="decimal" placeholder="7:42" autocomplete="off" aria-label="Game clock" />
+        <button id="sync" type="button">Sync</button>
+      </div>
+      <p class="hint">
+        Type a clock time you're about to see, then press <b>Sync</b> (or Enter) the moment your stream shows it.
+        Most accurate while the clock is running.
+      </p>
+    </section>
+
+    <section class="status" aria-live="polite">
+      <span id="dot" class="dot"></span>
+      <div>
+        <div id="status-title" class="status__title">Off</div>
+        <div id="status-detail" class="status__detail"></div>
+      </div>
+    </section>
+    <p id="error" class="error" hidden></p>
+
+    <footer class="options">
+      <label for="margin">Safety margin</label>
+      <select id="margin">
+        <option value="5000">5s</option>
+        <option value="10000">10s</option>
+        <option value="20000">20s</option>
+        <option value="30000">30s</option>
+        <option value="60000">60s</option>
+      </select>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<!--
+  Skeleton of an ESPN NBA game page (Box Score / Play-by-Play / Gamecast share it), reduced
+  to the elements and class names the shield relies on. Structure taken from ESPN's
+  server-rendered markup as of mid-2026. Text marked LIVE stands in for live scores.
+-->
+<html lang="en">
+  <head>
+    <title>Herons vs. Coyotes - Box Score - ESPN</title>
+  </head>
+  <body>
+    <div id="espnfitt">
+      <div id="DataWrapper">
+        <div id="fitt-analytics">
+          <div id="themeProvider" class="theme-light">
+            <div class="bp-desktopPlus" data-fitt-page-type="gamepackage">
+              <div id="lightboxContainer"></div>
+              <div class="HeaderScoreboardWrapper">
+                <div class="HeaderScoreboardContainer">
+                  <section class="HeaderScoreboard"><a class="ScoreCell__Link" href="/nba/game/_/gameId/900000001">LIVE ticker</a></section>
+                </div>
+              </div>
+              <header class="db Site__Header__Wrapper sticky"><div class="Site__Header">ESPN</div></header>
+              <div id="fittBGContainer"></div>
+              <main id="fittPageContainer">
+                <div class="pageContent">
+                  <div class="theme-nextGenGamecast">
+                    <div class="NzyJW pNwJE">LIVE mini strip</div>
+                    <h1 class="accessibilityHeader">Box Score</h1>
+                    <div>
+                      <div class="next-gen-gamecast">
+                        <section class="Gamestrip__StickyContainer">
+                          <div class="Gamestrip__Container"><div class="byXAV">LIVE score strip</div></div>
+                          <div></div>
+                          <div id="BloomPortalId"></div>
+                        </section>
+                        <section class="Gamestrip__ContentOffset">
+                          <nav class="Nav__Secondary NavSecondary--GamePackage" data-testid="nav">
+                            <div class="Nav__Secondary__Inner">
+                              <a href="/nba/game/_/gameId/900000001">Gamecast</a>
+                              <a href="/nba/boxscore/_/gameId/900000001">Box Score</a>
+                              <a href="/nba/playbyplay/_/gameId/900000001">Play-by-Play</a>
+                            </div>
+                          </nav>
+                          <div data-box-type="fitt-adbox-banner"></div>
+                          <div>
+                            <div class="PageLayout page-container cf PageLayout--desktopLg">
+                              <div class="PageLayout__Main">
+                                <section class="Card Card__TableTopBorder"><div class="Boxscore">LIVE box score</div></section>
+                              </div>
+                              <aside class="PageLayout__RightAside">LIVE standings</aside>
+                            </div>
+                          </div>
+                        </section>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div data-box-type="fitt-adbox-native"></div>
+                <div class="PageLayout page-container cf page-footer-container">Footer</div>
+              </main>
+              <div id="fittOverlayContainer"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
