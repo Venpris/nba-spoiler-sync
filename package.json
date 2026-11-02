@@ -1,0 +1,15 @@
+{
+  "name": "nba-spoiler-sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome extension that keeps ESPN's NBA game pages in step with a delayed stream.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.7",
+    "jsdom": "^29.1.1"
+  }
+}

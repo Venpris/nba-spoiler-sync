@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "NBA Spoiler Sync",
+  "version": "0.1.0",
+  "description": "Keeps ESPN's NBA game pages in step with your delayed stream, so the box score never gets ahead of what you've seen.",
+  "minimum_chrome_version": "120",
+  "action": {
+    "default_title": "NBA Spoiler Sync",
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "scripting", "alarms"],
+  "host_permissions": ["*://*.espn.com/*"]
+}

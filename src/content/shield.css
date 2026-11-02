@@ -1,0 +1,148 @@
+/*
+ * Hiding rules. These fail closed: anything that could show the synced game's live
+ * score is hidden first, and shield.js only reveals what's safe. The attributes on
+ * <html> are set by shield.js:
+ *   data-nss-on        the extension is on (set before the page renders)
+ *   data-nss-gamepage  this is an NBA game page (set before the page renders)
+ *   data-nss-ready     we know which game is synced
+ *   data-nss-here      this page belongs to the synced game
+ *   data-nss-mounted   our panel is in place
+ *   data-nss-fallback  ESPN's layout wasn't recognized; show only our panel
+ */
+
+/* ESPN's live scores ticker, on every page. */
+html[data-nss-on] .HeaderScoreboardWrapper { display: none !important; }
+
+/* Any NBA game page stays blank until we know whether it's the synced game. */
+html[data-nss-gamepage]:not([data-nss-ready]) body { visibility: hidden !important; }
+
+/* Scoreboard cards stay hidden until we know which one to cover. */
+html[data-nss-on]:not([data-nss-ready]) section.Scoreboard { visibility: hidden !important; }
+
+/* The synced game's pages: ESPN's score strip and everything below the tabs go. */
+html[data-nss-here] .Gamestrip__StickyContainer { display: none !important; }
+html[data-nss-here] .Gamestrip__ContentOffset > :not(nav):not(#nss-strip):not(#nss-root) { display: none !important; }
+html[data-nss-here] .theme-nextGenGamecast > :not(:has(.next-gen-gamecast)) { display: none !important; }
+html[data-nss-here]:not([data-nss-mounted]) body { visibility: hidden !important; }
+html[data-nss-fallback] body > :not(#nss-strip):not(#nss-root) { display: none !important; }
+
+/* ---- Our panel ------------------------------------------------------------------- */
+
+#nss-strip,
+#nss-root {
+  --nss-text: #1d1e1f;
+  --nss-muted: #6c6d6f;
+  --nss-line: #dcdddf;
+  --nss-soft-line: #edeef0;
+  --nss-head: #f7f7f7;
+  --nss-accent: #d00;
+  color: var(--nss-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+#nss-root {
+  display: grid;
+  gap: 16px;
+  max-width: 1280px;
+  margin: 16px auto 32px;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+#nss-strip .nss-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+  background: #fff;
+  border-bottom: 1px solid var(--nss-line);
+}
+
+#nss-strip .nss-strip__team { display: flex; align-items: center; gap: 12px; flex: 1 1 0; min-width: 0; }
+#nss-strip .nss-strip__team--home { flex-direction: row-reverse; text-align: right; }
+#nss-strip .nss-strip__abbr { font-size: 18px; font-weight: 700; }
+#nss-strip .nss-strip__name { color: var(--nss-muted); font-size: 13px; }
+#nss-strip .nss-strip__score { font-size: 36px; font-weight: 700; margin: 0 8px; font-variant-numeric: tabular-nums; }
+#nss-strip .nss-strip__center { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#nss-strip .nss-strip__status { font-size: 15px; font-weight: 700; color: var(--nss-accent); }
+
+#nss-strip .nss-linescore { border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+#nss-strip .nss-linescore th,
+#nss-strip .nss-linescore td { padding: 2px 6px; text-align: center; color: var(--nss-muted); border: 0; }
+#nss-strip .nss-linescore tbody th { text-align: left; color: var(--nss-text); }
+#nss-strip .nss-linescore .nss-total { color: var(--nss-text); font-weight: 700; }
+
+#nss-strip .nss-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #eef6ee;
+  color: #1e7a34;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#nss-strip .nss-strip--message { justify-content: flex-start; }
+#nss-strip .nss-strip__matchup { font-size: 18px; font-weight: 700; white-space: nowrap; }
+#nss-strip .nss-strip__message { display: flex; flex-direction: column; flex: 1; }
+#nss-strip .nss-strip__message span { color: var(--nss-muted); }
+#nss-strip .nss-strip__error {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 6px 16px;
+  box-sizing: border-box;
+  background: #fff4e5;
+  color: #8a4b00;
+  font-size: 13px;
+}
+
+#nss-root .nss-card { background: #fff; border: 1px solid var(--nss-line); border-radius: 4px; overflow: hidden; }
+#nss-root .nss-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--nss-line);
+}
+#nss-root .nss-card__body { padding: 0 0 8px; }
+#nss-root .nss-note { margin: 0; padding: 16px; color: var(--nss-muted); }
+#nss-root .nss-scroll { overflow-x: auto; }
+
+#nss-root .nss-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+#nss-root .nss-table th,
+#nss-root .nss-table td {
+  padding: 6px 8px;
+  text-align: right;
+  white-space: nowrap;
+  border: 0;
+  border-bottom: 1px solid var(--nss-soft-line);
+}
+#nss-root .nss-table th { background: var(--nss-head); color: var(--nss-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+#nss-root .nss-table .nss-name { text-align: left; position: sticky; left: 0; background: #fff; }
+#nss-root .nss-table th.nss-name { background: var(--nss-head); color: var(--nss-text); }
+#nss-root .nss-player { font-weight: 600; }
+#nss-root .nss-pos { color: var(--nss-muted); font-size: 12px; }
+#nss-root .nss-muted td { color: var(--nss-muted); }
+#nss-root .nss-dnp { text-align: left !important; }
+#nss-root .nss-totals td,
+#nss-root .nss-totals th { font-weight: 700; color: var(--nss-text); background: #fff; }
+
+#nss-root .nss-period { margin: 0; padding: 12px 16px 6px; font-size: 14px; font-weight: 700; }
+#nss-root .nss-plays .nss-play { text-align: left; white-space: normal; width: 100%; }
+#nss-root .nss-plays .nss-time { text-align: left; width: 48px; }
+#nss-root .nss-plays .nss-team { width: 24px; text-align: center; }
+#nss-root .nss-scoring td { font-weight: 700; }
+#nss-root .nss-logo,
+#nss-strip .nss-logo { display: block; object-fit: contain; }
+
+html[data-nss-fallback] #nss-strip { margin-top: 0; }
