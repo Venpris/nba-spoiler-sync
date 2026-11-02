@@ -7,8 +7,8 @@
   </head>
   <body>
     <header class="top">
-      <img src="../../icons/icon-32.png" alt="" width="24" height="24" />
-      <h1>NBA Spoiler Sync</h1>
+      <span class="logo"><img src="../../icons/icon-32.png" alt="" width="22" height="22" /></span>
+      <h1><span class="eyebrow">NBA</span>Spoiler Sync</h1>
       <label class="switch" title="Turn Spoiler Sync on or off">
         <input id="enabled" type="checkbox" disabled />
         <span class="switch__track"><span class="switch__thumb"></span></span>
@@ -16,15 +16,15 @@
       </label>
     </header>
 
-    <section class="field">
-      <label for="game">Game you're watching</label>
+    <section class="card">
+      <label class="card__label" for="game">Game you're watching</label>
       <select id="game">
         <option value="">Loading today's games…</option>
       </select>
     </section>
 
-    <section id="sync-section" class="sync" hidden>
-      <h2>Sync to your stream</h2>
+    <section id="sync-section" class="card" hidden>
+      <h2 class="card__label">Sync to your stream</h2>
       <div class="sync__row">
         <select id="period" aria-label="Quarter">
           <option value="1">1st</option>
@@ -45,7 +45,7 @@
       </p>
     </section>
 
-    <section class="status" aria-live="polite">
+    <section id="status" class="status" data-state="off" aria-live="polite">
       <span id="dot" class="dot"></span>
       <div>
         <div id="status-title" class="status__title">Off</div>

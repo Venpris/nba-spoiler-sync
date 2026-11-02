@@ -80,7 +80,7 @@ function render() {
   if (on && status.error) detail = `${status.error} ${detail}`;
   $('status-title').textContent = title;
   $('status-detail').textContent = detail;
-  $('dot').className = `dot${kind === 'ready' ? ' dot--ok' : kind === 'off' ? '' : ' dot--wait'}`;
+  $('status').dataset.state = kind;
 }
 
 async function doSync() {
