@@ -37,7 +37,9 @@ behind than it was when you synced is the one way ESPN could get ahead of you.
 
 The **Safety margin** (default 10s) is how far behind your stream the stats are kept on
 purpose. In testing on real ESPN timing data, the sync was never more than 4s ahead of the
-true moment, so 10s leaves room. Raise it if you'd rather be extra safe.
+true moment, so 10s leaves room. Raise it if you'd rather be extra safe. **None** keeps
+the stats as close to your stream as possible, but a play can then occasionally show up on
+ESPN a few seconds before you see it.
 
 ## What changes on ESPN while it's on
 
