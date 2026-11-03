@@ -1,9 +1,26 @@
 // Runs on every ESPN page while Spoiler Sync is on. Everything that could show the
 // synced game's live score starts hidden (see shield.css) and only comes back once we
-// know which game is being watched; on that game's own pages ESPN's score strip and
-// content are replaced by our panel, filled with stats that match the stream.
+// know which game is being watched. On that game's own pages ESPN's content is hidden,
+// and ESPN's own elements (score strip, box score, Gamecast, Play-by-Play and Team Stats
+// widgets) are shown as synced copies. Anything we can't match falls back to our own
+// strip and panel, filled with stats that match the stream.
 (() => {
   const View = globalThis.NSSView;
+  // Synced copies of ESPN's own elements, which pages they're shown on, and whether they
+  // replace our panel there.
+  const Gamecast = globalThis.NSSEspnGamecast;
+  const on = (...kinds) => (kind) => kinds.includes(kind);
+  const COPIES = {
+    strip: { lib: globalThis.NSSEspnStrip, onPage: () => true },
+    box: { lib: globalThis.NSSEspnBox, onPage: on('boxscore'), body: true },
+    lastPlays: { lib: Gamecast.lastPlays, onPage: on('gamecast'), body: true },
+    playByPlay: { lib: Gamecast.playByPlay, onPage: on('playbyplay'), body: true },
+    matchupTable: { lib: Gamecast.matchupTable, onPage: on('matchup'), body: true },
+    leaders: { lib: Gamecast.leaders, onPage: on('gamecast', 'matchup'), body: true },
+    teamStats: { lib: Gamecast.teamStats, onPage: on('gamecast', 'matchup'), body: true },
+    gameInfo: { lib: Gamecast.gameInfo, onPage: on('gamecast', 'playbyplay', 'matchup') },
+  };
+  const EspnCard = globalThis.NSSEspnCard;
   const html = document.documentElement;
   // Wait this long after the page has parsed before adding our panel, so it doesn't
   // collide with ESPN's React app taking over the server-rendered page.
@@ -16,9 +33,16 @@
   let canMount = false;
   let rendered = { strip: null, body: null };
   let renderedCard = null;
+  // The synced copy of ESPN's scoreboard card, and the last card that couldn't be matched.
+  let cardCopy = null;
+  let cardFailed = null;
   // Set when the spot we picked inside ESPN's layout turned out to be hidden; cleared on
   // navigation.
   let forceFallback = false;
+  // The synced copies currently shown: { copy, original, capturedAt } per name. And the
+  // last attempt that couldn't be matched, so it isn't retried on every page update.
+  const shown = {};
+  const failed = {};
 
   // Synchronous, before anything renders: the shield is on, and is this a game page?
   html.setAttribute('data-nss-on', '');
@@ -66,11 +90,13 @@
     for (const el of document.querySelectorAll('[data-nss-keep]')) el.removeAttribute('data-nss-keep');
   }
 
-  function markKeep(from, top) {
+  function markKeep(elements, top) {
     clearKeep();
-    for (let el = from.parentElement; el; el = el.parentElement) {
-      el.setAttribute('data-nss-keep', '');
-      if (el === top) break;
+    for (const from of elements) {
+      for (let el = from?.parentElement; el; el = el.parentElement) {
+        el.setAttribute('data-nss-keep', '');
+        if (el === top) break;
+      }
     }
   }
 
@@ -92,7 +118,7 @@
         after.after(root);
         moved = true;
       }
-      markKeep(root, spot.top);
+      markKeep([root], spot.top);
     } else {
       html.setAttribute('data-nss-fallback', '');
       clearKeep();
@@ -109,9 +135,9 @@
     if (moved) rendered = { strip: null, body: null };
     render();
 
-    // If something on ESPN's page still hides the spot we picked, the panel would vanish
-    // along with ESPN's content. Show it on its own instead.
-    if (spot && typeof root.checkVisibility === 'function' && !root.checkVisibility()) {
+    // If something on ESPN's page still hides the spot we picked, our strip and panel
+    // would vanish along with ESPN's content. Show them on their own instead.
+    if (spot && typeof spot.parent.checkVisibility === 'function' && !spot.parent.checkVisibility()) {
       forceFallback = true;
       mount();
     }
@@ -120,6 +146,7 @@
   function unmount() {
     document.getElementById('nss-strip')?.remove();
     document.getElementById('nss-root')?.remove();
+    for (const name of Object.keys(COPIES)) removeCopy(name);
     clearKeep();
     html.removeAttribute('data-nss-mounted');
     html.removeAttribute('data-nss-fallback');
@@ -138,11 +165,76 @@
     const strip = document.getElementById('nss-strip');
     const root = document.getElementById('nss-root');
     if (!strip || !root) return;
-    const stripHtml = View.renderStrip(view, game);
-    const bodyHtml = View.renderBody(View.pageKind(location.href), view);
+    const kind = View.pageKind(location.href);
+    const spot = inPageSpot();
+    const ready = Boolean(spot && view?.status === 'ready');
+    const active = {};
+    for (const [name, { onPage }] of Object.entries(COPIES)) {
+      active[name] = ready && onPage(kind) && placeCopy(name, spot);
+      if (!active[name]) removeCopy(name);
+    }
+    if (spot) markKeep([root, ...Object.values(shown).map((s) => s.copy)], spot.top);
+    // Hidden after marking: if ESPN's page hides a copy anyway, fall back to ours.
+    for (const name of Object.keys(COPIES)) {
+      const copy = shown[name]?.copy;
+      if (copy && typeof copy.checkVisibility === 'function' && !copy.checkVisibility()) {
+        removeCopy(name);
+        active[name] = false;
+      }
+    }
+    const stripHtml = active.strip ? '' : View.renderStrip(view, game);
+    const espnBody = Object.entries(COPIES).some(([name, { body }]) => body && active[name]);
+    const bodyHtml = espnBody ? '' : View.renderBody(kind, view);
     if (stripHtml !== rendered.strip) strip.innerHTML = stripHtml;
     if (bodyHtml !== rendered.body) root.innerHTML = bodyHtml;
     rendered = { strip: stripHtml, body: bodyHtml };
+  }
+
+  // Put a synced copy of one of ESPN's elements right after the (hidden) original.
+  // Rebuilt whenever the synced snapshot changes or ESPN re-renders the original.
+  // Returns false if ESPN's element isn't there or can't be matched.
+  function placeCopy(name, spot) {
+    const { lib } = COPIES[name];
+    const original = lib.findOriginal(document, game);
+    if (!original || !spot.top.contains(original)) return false;
+    const snapshot = view.snapshot;
+    const current = shown[name];
+    const inPlace = current?.copy.isConnected && current.original === original && original.nextElementSibling === current.copy;
+    if (inPlace && current.capturedAt === snapshot.capturedAt) return true;
+    if (failed[name]?.original === original && failed[name].capturedAt === snapshot.capturedAt) return false;
+    const built = lib.buildCopy(original, snapshot, view.plays);
+    if (!built) {
+      failed[name] = { original, capturedAt: snapshot.capturedAt };
+      return false;
+    }
+    delete failed[name];
+    removeCopy(name);
+    built.copy.setAttribute('data-nss-copy', name);
+    original.after(built.copy);
+    shown[name] = { copy: built.copy, original, capturedAt: snapshot.capturedAt };
+    return true;
+  }
+
+  function removeCopy(name) {
+    for (const el of document.querySelectorAll(`[data-nss-copy="${name}"]`)) el.remove();
+    shown[name]?.copy.remove();
+    delete shown[name];
+  }
+
+  // A copy needs (re)building if ESPN replaced or moved its original, or the original
+  // only just appeared.
+  function copiesNeedRender() {
+    if (view?.status !== 'ready') return false;
+    const kind = View.pageKind(location.href);
+    return Object.entries(COPIES).some(([name, { lib, onPage }]) => {
+      if (!onPage(kind)) return false;
+      const current = shown[name];
+      if (!current) {
+        const original = lib.findOriginal(document, game);
+        return Boolean(original) && !(failed[name]?.original === original && failed[name].capturedAt === view.snapshot.capturedAt);
+      }
+      return !(current.copy.isConnected && current.original.isConnected && current.original.nextElementSibling === current.copy);
+    });
   }
 
   function applyTitle() {
@@ -151,9 +243,10 @@
     if (document.title !== title) document.title = title;
   }
 
-  // The synced game's card on scoreboard pages: ESPN's content is hidden and our own card
-  // (synced score and links to the game's pages) sits on top. Until ours is in place the
-  // card just says it's hidden.
+  // The synced game's card on scoreboard pages. Once synced, ESPN's card is hidden and a
+  // synced copy of it sits next to it. Before that (or if ESPN's card can't be matched),
+  // ESPN's content is hidden and our own card sits on top of it. Until ours is in place
+  // the card just says it's hidden.
   function hideScoreboardCard() {
     if (!game || document.getElementById('nss-dynamic')) return;
     const card = `section.Scoreboard[id="${game.id}"]`;
@@ -165,26 +258,69 @@
       ${card}:not(:has(> #nss-scorecard))::after {
         content: "Hidden by Spoiler Sync"; position: absolute; inset: 0; display: flex;
         align-items: center; justify-content: center; font-weight: 600; color: #6c6d6f;
-      }`;
+      }
+      html[data-nss-card-copy] ${card} { display: none !important; }`;
     (document.head || html).appendChild(style);
   }
 
   function scoreboardCard() {
-    const card = game && document.getElementById(game.id);
-    return card && card.matches('section.Scoreboard') ? card : null;
+    return EspnCard.findOriginal(document, game);
   }
 
-  function mountScoreCard() {
+  // Show the synced copy of ESPN's card if we can, otherwise our own card.
+  function updateScoreboardCard() {
     const card = canMount && scoreboardCard();
-    if (!card) return;
-    let el = document.getElementById('nss-scorecard');
-    if (el?.parentElement === card) return;
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'nss-scorecard';
+    if (card && view?.status === 'ready' && placeCardCopy(card)) {
+      document.getElementById('nss-scorecard')?.remove();
+      return;
     }
-    card.append(el);
-    renderedCard = null;
+    removeCardCopy();
+    if (card) mountScoreCard(card);
+  }
+
+  function placeCardCopy(card) {
+    const capturedAt = view.snapshot.capturedAt;
+    if (cardCopy && cardCopy.original === card && card.nextElementSibling === cardCopy.copy && cardCopy.capturedAt === capturedAt) return true;
+    if (cardFailed?.original === card && cardFailed.capturedAt === capturedAt) return false;
+    const built = EspnCard.buildCopy(card, view.snapshot, view.plays);
+    if (!built) {
+      cardFailed = { original: card, capturedAt };
+      return false;
+    }
+    removeCardCopy();
+    built.copy.setAttribute('data-nss-copy', 'card');
+    card.after(built.copy);
+    cardCopy = { copy: built.copy, original: card, capturedAt };
+    html.setAttribute('data-nss-card-copy', '');
+    return true;
+  }
+
+  function removeCardCopy() {
+    cardCopy?.copy.remove();
+    for (const el of document.querySelectorAll('[data-nss-copy="card"]')) el.remove();
+    cardCopy = null;
+    html.removeAttribute('data-nss-card-copy');
+  }
+
+  // Whether the card needs updating after ESPN changed the page.
+  function cardOutOfPlace() {
+    const card = scoreboardCard();
+    if (!card) return Boolean(cardCopy);
+    if (cardCopy) return !(cardCopy.copy.isConnected && cardCopy.original === card && card.nextElementSibling === cardCopy.copy);
+    if (view?.status === 'ready' && !(cardFailed?.original === card && cardFailed.capturedAt === view.snapshot.capturedAt)) return true;
+    return document.getElementById('nss-scorecard')?.parentElement !== card;
+  }
+
+  function mountScoreCard(card) {
+    let el = document.getElementById('nss-scorecard');
+    if (el?.parentElement !== card) {
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'nss-scorecard';
+      }
+      card.append(el);
+      renderedCard = null;
+    }
     renderScoreCard();
   }
 
@@ -202,12 +338,12 @@
       configured = true;
       if (!game) html.removeAttribute('data-nss-on');
       hideScoreboardCard();
-      mountScoreCard();
+      updateScoreboardCard();
       applyLocation();
     } else if (msg?.type === 'view') {
       view = msg.view;
       render();
-      renderScoreCard();
+      updateScoreboardCard();
     }
   }
 
@@ -236,17 +372,18 @@
     if (location.href !== lastHref) applyLocation();
     else if (isHere()) {
       if (canMount && !isMounted()) mount();
+      // ESPN re-rendered its strip or box score (or it only just appeared): rebuild.
+      else if (copiesNeedRender()) render();
       applyTitle();
     }
-    const card = canMount && scoreboardCard();
-    if (card && document.getElementById('nss-scorecard')?.parentElement !== card) mountScoreCard();
+    if (canMount && game && cardOutOfPlace()) updateScoreboardCard();
   }).observe(html, { childList: true, subtree: true });
 
   function allowMount() {
     setTimeout(() => {
       canMount = true;
       if (isHere()) mount();
-      mountScoreCard();
+      updateScoreboardCard();
     }, MOUNT_DELAY_MS);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', allowMount, { once: true });

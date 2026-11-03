@@ -1,6 +1,6 @@
 // ESPN's public (undocumented) site API, plus trimming of its responses down to what we
-// store. Anything not copied here (win probability, news, team records, odds...) is
-// dropped on arrival so it can never reach a page.
+// store. Anything not copied here (win probability, news, odds...) is dropped on arrival
+// so it can never reach a page.
 import { parseClock } from './clock.js';
 
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
@@ -53,7 +53,9 @@ export function trimPlays(json) {
     wallclockMs: Date.parse(p.wallclock),
     text: p.text ?? '',
     type: p.type?.text ?? '',
+    label: p.shortDescription ?? '', // "+3 Points", "Missed FG", "Rebound": as on ESPN's play cards
     teamId: p.team?.id ?? null,
+    athleteId: p.participants?.[0]?.athlete?.id ?? null,
     scoring: Boolean(p.scoringPlay),
     away: p.awayScore,
     home: p.homeScore,
@@ -94,6 +96,12 @@ export function trimSnapshot(json, plays = trimPlays(json)) {
     color: c.team?.color || null,
     score: c.score ?? null,
     linescores: (c.linescores || []).map((l) => l.displayValue),
+    // Records change when the game ends, but a snapshot only ever has them as of when it
+    // was recorded, which is before the point the viewer is at.
+    record: {
+      total: (c.record || []).find((r) => r.type === 'total')?.summary ?? null,
+      venue: (c.record || []).find((r) => r.type === (c.homeAway === 'home' ? 'home' : 'road'))?.summary ?? null,
+    },
   }));
 
   const box = (json.boxscore?.players || []).map((tp) => {

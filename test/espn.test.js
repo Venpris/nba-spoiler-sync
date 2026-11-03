@@ -33,10 +33,11 @@ test('trimSnapshot keeps the box score and drops everything else', () => {
   assert.equal(snap.status.state, 'post');
   assert.equal(snap.lastSeq, Math.max(...trimPlays(fixture).map((p) => p.seq)));
 
-  // Team records change when a game ends, so they must not be kept.
+  // Records are kept as of the snapshot (ESPN only updates them once the game is over).
+  const homeTeam = snap.teams.find((t) => t.homeAway === 'home');
+  assert.deepEqual(homeTeam.record, { total: '12-6', venue: '7-2' });
+  // Win probability and news never make it in.
   const text = JSON.stringify(snap);
-  assert.ok(fixture.header.competitions[0].competitors[0].record);
-  assert.ok(!text.includes('"record'));
   assert.ok(fixture.winprobability && fixture.news);
   assert.ok(!text.includes('homeWinPercentage'));
   assert.ok(!text.includes('headline'));

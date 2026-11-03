@@ -4,9 +4,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { trimPlays, trimSnapshot } from '../src/lib/espn.js';
+import { espnBoxHtml } from './helpers/espn-box-markup.js';
+import { espnStripHtml } from './helpers/espn-strip-markup.js';
+import { espnCardHtml } from './helpers/espn-card-markup.js';
+import { gamecastColumnsHtml, playByPlayHtml, gameInfoHtml, matchupTableHtml, leadersHtml, teamStatsHtml } from './helpers/espn-gamecast-markup.js';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const sources = ['../src/content/nav-hook.js', '../src/content/view.js', '../src/content/shield.js'].map(read);
+const sources = [
+  '../src/content/nav-hook.js',
+  '../src/content/view.js',
+  '../src/content/espn-copy.js',
+  '../src/content/espn-box.js',
+  '../src/content/espn-strip.js',
+  '../src/content/espn-card.js',
+  '../src/content/espn-gamecast.js',
+  '../src/content/shield.js',
+].map(read);
 const css = read('../src/content/shield.css');
 const layouts = {
   'July 2026': read('./fixtures/espn-gamepage-2026-07.html'),
@@ -22,7 +35,7 @@ const MOUNT_WAIT = 1200;
 
 // The rules in shield.css that hide things, and a check of whether an element ends up
 // hidden by them (or by an inline display: none, standing in for ESPN's own CSS).
-const rules = [...css.matchAll(/^(html\[[^{]+)\{([^}]*)\}/gm)]
+const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^}]*)\}/g)]
   .filter((m) => /display:\s*none|visibility:\s*hidden/.test(m[2]))
   .map((m) => m[1].trim());
 const rule = (needle) => rules.find((r) => r.includes(needle));
@@ -133,6 +146,154 @@ for (const [layout, html] of Object.entries(layouts)) {
   });
 }
 
+test('Box Score page: ESPN’s own box score, rewritten with synced stats', async () => {
+  const teams = readyView.snapshot.teams;
+  const html = layouts['October 2026']
+    .replace(/<section class="Card Card__TableTopBorder">[\s\S]*?<\/section>/, espnBoxHtml(fixture))
+    .replace(/<section class="Gamestrip__StickyContainer">[\s\S]*?<\/section>/, espnStripHtml({ away: teams.find((t) => t.homeAway === 'away'), home: teams.find((t) => t.homeAway === 'home') }));
+  const page = load(html, BOX_URL);
+  const { doc } = page;
+  const copy = () => doc.querySelector('[data-nss-copy="box"]');
+  const stripCopy = () => doc.querySelector('[data-nss-copy="strip"]');
+  const original = () => [...doc.querySelectorAll('.Boxscore__ResponsiveWrapper')].find((el) => !el.closest('[data-nss-copy]')).closest('section');
+  const originalStrip = () => [...doc.querySelectorAll('.Gamestrip__StickyContainer')].find((el) => !el.closest('[data-nss-copy]'));
+  // ESPN's live numbers (99 in this markup) must never be visible. (Our own panel and
+  // copies show synced numbers, which can be anything.)
+  const visible99 = () => {
+    const isHidden = hiddenCheck(doc);
+    return [...doc.querySelectorAll('body *')].filter(
+      (el) => !el.children.length && /99/.test(el.textContent) && !el.closest('#nss-root, #nss-strip, [data-nss-copy]') && !isHidden(el),
+    );
+  };
+
+  page.send({ type: 'config', game: GAME });
+  await wait(MOUNT_WAIT);
+
+  // Not synced yet: our strip and panel explain, ESPN's strip and box score stay hidden.
+  page.send({ type: 'view', view: { status: 'loading', readyInMs: 30_000 } });
+  assert.equal(copy(), null);
+  assert.equal(stripCopy(), null);
+  assert.match(doc.getElementById('nss-strip').textContent, /Getting ready/);
+  assert.match(doc.getElementById('nss-root').textContent, /Hidden by Spoiler Sync/);
+  assert.equal(visible99().length, 0);
+
+  // Synced: the copies sit where ESPN's strip and box score were; ESPN's originals and
+  // our own strip and panel are hidden.
+  page.send({ type: 'view', view: readyView });
+  assert.ok(copy() && !page.isHidden(copy()));
+  assert.equal(original().nextElementSibling, copy());
+  assert.ok(page.isHidden(original()));
+  assert.ok(stripCopy() && !page.isHidden(stripCopy()));
+  assert.equal(originalStrip().nextElementSibling, stripCopy());
+  assert.ok(page.isHidden(originalStrip()));
+  assert.ok(stripCopy().textContent.includes(teams[0].score));
+  assert.ok(page.isHidden(doc.getElementById('nss-root')));
+  assert.ok(page.isHidden(doc.getElementById('nss-strip')));
+  assert.ok(page.isHidden([...doc.querySelectorAll('div')].find((d) => d.textContent === 'LIVE mini score')));
+  assert.equal(visible99().length, 0);
+  const firstPlayer = readyView.snapshot.box[0].players.find((p) => p.stats.length);
+  assert.ok(copy().textContent.includes(firstPlayer.stats[2]));
+
+  // A newer synced moment rebuilds the copy with the new numbers.
+  const later = structuredClone(readyView);
+  later.snapshot.capturedAt = 2;
+  later.snapshot.box[0].players.find((p) => p.id === firstPlayer.id).stats[1] = '42';
+  page.send({ type: 'view', view: later });
+  assert.ok(copy().textContent.includes('42'));
+
+  // ESPN re-rendering its box score: the copy is rebuilt next to the new original.
+  const replacement = original().cloneNode(true);
+  original().replaceWith(replacement);
+  await wait(10);
+  assert.equal(replacement.nextElementSibling, copy());
+  assert.equal(doc.querySelectorAll('[data-nss-copy="box"]').length, 1);
+  assert.equal(visible99().length, 0);
+
+  // Leaving the Box Score tab for Play-by-Play: box score copy gone, panel back; ESPN's
+  // strip stays (synced) on every game page.
+  page.window.history.pushState({}, '', '/nba/playbyplay/_/gameId/900000001');
+  assert.equal(copy(), null);
+  assert.ok(stripCopy() && !page.isHidden(stripCopy()));
+  assert.ok(doc.getElementById('nss-root').textContent.includes('4th Quarter'));
+  assert.equal(visible99().length, 0);
+});
+
+test('Gamecast page: ESPN’s text widgets, synced; everything else hidden', async () => {
+  const teams = readyView.snapshot.teams;
+  const pair = { away: teams.find((t) => t.homeAway === 'away'), home: teams.find((t) => t.homeAway === 'home') };
+  const html = layouts['October 2026'].replace(/<div class="PageLayout page-container cf PageLayout--desktopLg">[\s\S]*?<\/aside>\s*<\/div>/, gamecastColumnsHtml(pair));
+  const page = load(html, 'https://www.espn.com/nba/game/_/gameId/900000001');
+  const { doc } = page;
+  page.send({ type: 'config', game: GAME });
+  await wait(MOUNT_WAIT);
+
+  // Before syncing: our panel explains; none of ESPN's widgets show.
+  page.send({ type: 'view', view: { status: 'loading', readyInMs: 5_000 } });
+  assert.equal(doc.querySelectorAll('[data-nss-copy]').length, 0);
+  for (const el of page.live()) assert.ok(page.isHidden(el), `visible: "${el.textContent.trim()}"`);
+
+  // Synced: a copy of each text widget, right after its hidden original.
+  page.send({ type: 'view', view: readyView });
+  for (const name of ['lastPlays', 'leaders', 'teamStats', 'gameInfo']) {
+    const copy = doc.querySelector(`[data-nss-copy="${name}"]`);
+    assert.ok(copy && !page.isHidden(copy), `${name} shown`);
+    assert.ok(page.isHidden(copy.previousElementSibling), `${name} original hidden`);
+  }
+  assert.ok(doc.querySelector('[data-nss-copy="lastPlays"] p').textContent.length > 0);
+  // Win probability, lineups, highlights, odds and standings stay hidden, as does our panel.
+  for (const el of page.live()) assert.ok(page.isHidden(el), `visible: "${el.textContent.trim()}"`);
+  assert.ok(page.isHidden(doc.getElementById('nss-root')));
+});
+
+test('Play-by-Play page: ESPN’s play list, synced; shot chart and the rest hidden', async () => {
+  const columns = `
+    <div class="PageLayout page-container cf PageLayout--desktopLg">
+      <div class="PageLayout__Main">${playByPlayHtml()}</div>
+      <div class="PageLayout__RightAside">${gameInfoHtml()}<div class="Standings"><h2>Standings</h2><span>LIVE 99-99</span></div></div>
+    </div>`;
+  const html = layouts['October 2026'].replace(/<div class="PageLayout page-container cf PageLayout--desktopLg">[\s\S]*?<\/aside>\s*<\/div>/, columns);
+  const page = load(html, 'https://www.espn.com/nba/playbyplay/_/gameId/900000001');
+  const { doc } = page;
+  page.send({ type: 'config', game: GAME });
+  await wait(MOUNT_WAIT);
+  page.send({ type: 'view', view: readyView });
+
+  const list = doc.querySelector('[data-nss-copy="playByPlay"]');
+  assert.ok(list && !page.isHidden(list));
+  assert.equal(list.querySelectorAll('[data-testid="prism-Accordion"]').length, readyView.plays.length);
+  assert.ok(!page.isHidden(doc.querySelector('[data-nss-copy="gameInfo"]')));
+  for (const el of page.live()) assert.ok(page.isHidden(el), `visible: "${el.textContent.trim()}"`);
+  assert.ok(page.isHidden(doc.getElementById('nss-root')));
+});
+
+test('Team Stats page: ESPN’s table and side widgets, synced; the rest hidden', async () => {
+  const teams = readyView.snapshot.teams;
+  const pair = { away: teams.find((t) => t.homeAway === 'away'), home: teams.find((t) => t.homeAway === 'home') };
+  const columns = `
+    <div class="PageLayout page-container cf PageLayout--desktopLg">
+      <div class="PageLayout__LeftAside">${leadersHtml(pair)}${teamStatsHtml(pair)}${gameInfoHtml()}</div>
+      <div class="PageLayout__Main">${matchupTableHtml()}</div>
+      <div class="PageLayout__RightAside"><div class="Standings"><h2>Standings</h2><span>LIVE 99-99</span></div></div>
+    </div>`;
+  const html = layouts['October 2026'].replace(/<div class="PageLayout page-container cf PageLayout--desktopLg">[\s\S]*?<\/aside>\s*<\/div>/, columns);
+  const page = load(html, 'https://www.espn.com/nba/matchup/_/gameId/900000001');
+  const { doc } = page;
+  page.send({ type: 'config', game: GAME });
+  await wait(MOUNT_WAIT);
+  page.send({ type: 'view', view: readyView });
+
+  for (const name of ['matchupTable', 'leaders', 'teamStats', 'gameInfo']) {
+    const copy = doc.querySelector(`[data-nss-copy="${name}"]`);
+    assert.ok(copy && !page.isHidden(copy), `${name} shown`);
+  }
+  // ESPN's live values (99) are visible nowhere outside our copies.
+  const isHidden = (el) => page.isHidden(el);
+  const live99 = [...doc.querySelectorAll('body *')].filter((el) => !el.children.length && /99/.test(el.textContent) && !el.closest('[data-nss-copy], #nss-root, #nss-strip') && !isHidden(el));
+  assert.deepEqual(live99.map((el) => el.textContent), []);
+  for (const el of page.live()) assert.ok(page.isHidden(el), `visible: "${el.textContent.trim()}"`);
+  assert.ok(page.isHidden(doc.getElementById('nss-root')));
+});
+
 test('if ESPN hides the spot the panel was put in, it shows on its own instead', async () => {
   // Stand-in for ESPN CSS hiding the area below the tabs.
   const html = layouts['October 2026'].replace('<section class="Gamestrip__ContentOffset">', '<section class="Gamestrip__ContentOffset" style="display: none">');
@@ -190,6 +351,41 @@ test('scoreboard: the synced game gets our card with the synced score and links'
   await wait(10);
   assert.equal(card()?.parentElement.id, '900000001');
   assert.ok(card().textContent.includes(away.score));
+});
+
+test('scoreboard: once synced, ESPN’s own card shows the synced game', async () => {
+  const teams = readyView.snapshot.teams;
+  const pair = { away: teams.find((t) => t.homeAway === 'away'), home: teams.find((t) => t.homeAway === 'home') };
+  const html = `<!doctype html><html><head></head><body>${espnCardHtml({ id: '900000001', ...pair })}${espnCardHtml({ id: '900000002', ...pair })}</body></html>`;
+  const page = load(html, 'https://www.espn.com/nba/scoreboard');
+  const { doc } = page;
+  const original = doc.getElementById('900000001');
+  const copy = () => doc.querySelector('[data-nss-copy="card"]');
+  const originalHidden = () => doc.querySelector(`html[data-nss-card-copy] section.Scoreboard[id="900000001"]`) === original;
+
+  page.send({ type: 'config', game: GAME });
+  await wait(MOUNT_WAIT);
+
+  // Before syncing: our own card covers ESPN's.
+  page.send({ type: 'view', view: { status: 'unsynced' } });
+  assert.equal(copy(), null);
+  assert.equal(doc.getElementById('nss-scorecard')?.parentElement, original);
+
+  // Synced: ESPN's card is hidden and a synced copy of it shown right after.
+  page.send({ type: 'view', view: readyView });
+  assert.equal(original.nextElementSibling, copy());
+  assert.ok(originalHidden());
+  assert.equal(doc.getElementById('nss-scorecard'), null);
+  assert.ok(copy().textContent.includes(pair.away.score) && copy().textContent.includes('Top Performers'));
+  assert.ok(!/\b99\b/.test(copy().textContent));
+  // The other game's card is untouched.
+  assert.ok(doc.getElementById('900000002').textContent.includes('99'));
+
+  // ESPN re-rendering its list: the copy is put back.
+  copy().remove();
+  await wait(10);
+  assert.equal(original.nextElementSibling, copy());
+  assert.ok(originalHidden());
 });
 
 test('unrecognized layout falls back to showing only our panel', async () => {

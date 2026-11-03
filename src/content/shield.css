@@ -8,7 +8,8 @@
  *   data-nss-here      this page belongs to the synced game
  *   data-nss-mounted   our panel is in place
  *   data-nss-fallback  ESPN's layout wasn't recognized; show only our panel
- * and data-nss-keep on the elements that contain our panel.
+ * and data-nss-keep on the elements that contain our panel, data-nss-copy on the synced
+ * copies of ESPN's score strip and box score.
  */
 
 /* ESPN's live scores ticker, on every page. */
@@ -25,9 +26,12 @@ html[data-nss-on]:not([data-nss-ready]) section.Scoreboard { visibility: hidden 
  * marked data-nss-keep; everything else in that area is hidden, except ESPN's game tabs.
  * This doesn't depend on what ESPN calls its score strip, dock, sidebars and so on.
  */
-html[data-nss-here] [data-nss-keep] > :not([data-nss-keep]):not(#nss-strip):not(#nss-root):not(.NavSecondary--GamePackage) {
+html[data-nss-here] [data-nss-keep] > :not([data-nss-keep]):not(#nss-strip):not(#nss-root):not([data-nss-copy]):not(.NavSecondary--GamePackage) {
   display: none !important;
 }
+/* When ESPN's own (synced) strip or box score is shown, ours are empty. */
+#nss-strip:empty,
+#nss-root:empty { display: none !important; }
 html[data-nss-here]:not([data-nss-mounted]) body { visibility: hidden !important; }
 html[data-nss-fallback] body > :not(#nss-strip):not(#nss-root) { display: none !important; }
 

@@ -72,6 +72,8 @@ const byPeriod = { away: [], home: [] };
 let lead = { away: 0, home: 0 };
 let leader = null;
 let leadChanges = 0;
+const teamTurnovers = { away: 0, home: 0 };
+const playsLeading = { away: 0, home: 0 };
 
 const plays = timing.map((t, i) => {
   const seq = i + 1;
@@ -132,8 +134,10 @@ const plays = timing.map((t, i) => {
     }
     case 'turnover': {
       type = 'Bad Pass Turnover';
-      if (t.team) text = `${TEAMS[side].name} turnover`;
-      else {
+      if (t.team) {
+        text = `${TEAMS[side].name} turnover`;
+        teamTurnovers[side]++;
+      } else {
         shooter.stats.to++;
         text = `${shooter.displayName} bad pass`;
         participants.push(shooter);
@@ -200,11 +204,28 @@ const plays = timing.map((t, i) => {
     lead.home = Math.max(lead.home, margin);
     lead.away = Math.max(lead.away, -margin);
   }
+  if (score.home !== score.away) playsLeading[score.home > score.away ? 'home' : 'away']++;
+
+  // ESPN's short label for the play, as on its Gamecast play cards.
+  const shortDescription = {
+    shot: t.points ? `+${t.points} Points` : t.attempt === 3 ? 'Missed 3PT' : 'Missed FG',
+    ft: t.points ? '+1 Point' : 'Missed FT',
+    oreb: 'Rebound',
+    dreb: 'Rebound',
+    turnover: 'Turnover',
+    foul: 'Foul',
+    sub: 'Substitution',
+    timeout: 'Timeout',
+    jumpball: 'Jump Ball',
+    endperiod: t.period === 2 ? 'Halftime' : `End of ${ordinal(t.period)}`,
+    endgame: 'End of Game',
+  }[t.kind] ?? 'Challenge';
 
   return {
     id: `${GAME_ID}${seq}`,
     sequenceNumber: String(seq),
     type: { id: String(100 + i), text: type },
+    shortDescription,
     text,
     awayScore: score.away,
     homeScore: score.home,
@@ -268,9 +289,12 @@ function teamStats(side) {
     stat('steals', 'Steals', 'STL', t.stl),
     stat('blocks', 'Blocks', 'BLK', t.blk),
     stat('turnovers', 'Turnovers', 'TO', t.to),
+    stat('teamTurnovers', 'Team Turnovers', 'TTO', teamTurnovers[side]),
+    stat('totalTurnovers', 'Total Turnovers', 'ToTO', t.to + teamTurnovers[side]),
     stat('fouls', 'Fouls', 'PF', t.pf),
     stat('largestLead', 'Largest Lead', 'LL', lead[side]),
     stat('leadChanges', 'Lead Changes', 'LC', leadChanges),
+    stat('leadPercentage', 'Percent Led', 'LPCT', Math.round((100 * playsLeading[side]) / timing.length)),
   ];
 }
 
@@ -289,8 +313,10 @@ const game = {
           team: teamJson(side),
           score: String(score[side]),
           linescores: Array.from({ length: periods }, (_, i) => ({ displayValue: String(byPeriod[side][i] ?? 0) })),
-          // Records change when a game ends; the extension must drop them.
-          record: [{ type: 'total', summary: side === 'home' ? '12-6' : '9-9' }],
+          record: [
+            { type: 'total', summary: side === 'home' ? '12-6' : '9-9' },
+            { type: side === 'home' ? 'home' : 'road', summary: side === 'home' ? '7-2' : '4-5' },
+          ],
         })),
         status: { type: { id: '3', name: 'STATUS_FINAL', state: 'post', completed: true, description: 'Final', detail: 'Final', shortDetail: 'Final' } },
       },

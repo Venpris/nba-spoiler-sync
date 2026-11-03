@@ -5,7 +5,7 @@
   "description": "Chrome extension that keeps ESPN's NBA game pages in step with a delayed stream.",
   "type": "module",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test \"test/*.test.js\"",
     "icons": "node scripts/make-icons.mjs",
     "fixtures": "node scripts/make-test-game.mjs"
   },
