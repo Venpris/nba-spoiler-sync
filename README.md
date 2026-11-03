@@ -11,12 +11,16 @@ from that far back.
 
 No build step is needed.
 
-1. Open `chrome://extensions`.
-2. Turn on **Developer mode** (top right).
-3. Click **Load unpacked** and pick this folder (the one with `manifest.json`).
-4. Pin the extension (puzzle-piece icon in the toolbar) so its basketball icon is easy to reach.
+1. Download `nba-spoiler-sync-<version>.zip` from the latest
+   [release](../../releases/latest) and unzip it (or clone this repo).
+2. Open `chrome://extensions`.
+3. Turn on **Developer mode** (top right).
+4. Click **Load unpacked** and pick the unzipped folder (the one with `manifest.json`).
+5. Pin the extension (puzzle-piece icon in the toolbar) so its basketball icon is easy to reach.
 
-After editing the code, click the reload arrow on the extension's card in `chrome://extensions`.
+To update, download the new release and replace the folder's contents, then click the
+reload arrow on the extension's card in `chrome://extensions`. The same reload picks up
+your own code changes.
 
 ## Use
 
@@ -102,6 +106,7 @@ npm install      # test-only dependencies: jsdom and fake-indexeddb
 npm test
 npm run icons    # redraw icons/*.png
 npm run fixtures # rebuild test/fixtures/game.json
+npm run package  # build dist/nba-spoiler-sync-<version>.zip from the last commit, for a release
 ```
 
 | Path | What it is |
