@@ -1,7 +1,6 @@
-// Builds score strip markup shaped like ESPN's (structure as of November 2026; class names
-// shortened) for two teams, with stand-in live values. `state` is 'in' (clock, timeouts,
-// "Bonus") or 'post' (Final, winner arrow, loser in muted colors). `periods` sets how many
-// quarter columns ESPN shows (5 = overtime).
+// score strip with ESPN's structure (as of November 2026, class names shortened) and stand-in live values
+// `state` is 'in' (clock, timeouts, "Bonus") or 'post' (Final, winner arrow, muted loser)
+// `periods` is how many quarter columns ESPN shows (5 = overtime)
 export function espnStripHtml({ away, home, state = 'in', periods = 4, live = '99', note = '' }) {
   const winner = state === 'post' ? 'home' : null;
   const color = (side) => (winner && side !== winner ? 'muted' : 'normal');

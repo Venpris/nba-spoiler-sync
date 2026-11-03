@@ -1,8 +1,7 @@
-// Keeps ESPN's own score strip: rewrites a copy of it with the synced score, clock, quarter
-// scores and records. Like the box score, every number in the copy is either written from
-// the synced snapshot or cleared. Live-only details (timeouts left, "Bonus") are hidden,
-// and on a finished game ESPN's winner styling is undone so it can't give the result away.
-// Runs as a content script (exposes globalThis.NSSEspnStrip) and is imported by the tests.
+// copies ESPN's own score strip and rewrites it with the synced score, clock, quarter
+// scores and records, clearing any other number, hiding live-only details (timeouts left,
+// "Bonus") and undoing a finished game's winner styling so it can't give the result away
+// content script exposing globalThis.NSSEspnStrip, also imported by the tests
 (function () {
   const { prepare, writer, ownText, setImage } = globalThis.NSSCopy;
   const TEAM_HREF = /\/team\/_\/name\/([a-z0-9]+)/i;
@@ -14,8 +13,8 @@
   const teamLinks = (root) => [...root.querySelectorAll('a[href*="/team/_/name/"]')];
   const hasLogo = (a) => Boolean(a.querySelector('picture, img'));
 
-  // The two team halves of the strip (away, then home): for each team logo, the ancestor
-  // just below the element both logos share.
+  // the strip's two team halves (away, then home), each the ancestor of a team logo just
+  // below the element both logos share
   function teamHalves(copy) {
     const logos = teamLinks(copy).filter((a) => hasLogo(a) && !a.closest('table'));
     if (logos.length !== 2) return null;
@@ -31,7 +30,7 @@
 
   const scoreElement = (half) => [...half.querySelectorAll('*')].find((el) => /^\d{1,3}$/.test(ownText(el)) && !el.closest('a, table'));
   const nameLink = (half) => teamLinks(half).find((a) => !hasLogo(a));
-  // "5-1" and ", 3-1 Away" sit in two spans of one element; ESPN repeats it per team.
+  // "5-1" and ", 3-1 Away" sit in two spans of one element, which ESPN repeats per team
   const recordElements = (half) => [...half.querySelectorAll('*')].filter((el) => el.children[0] && /^\d+-\d+$/.test(el.children[0].textContent.trim()));
 
   function periodLabel(period) {
@@ -39,7 +38,7 @@
     return period === 5 ? 'OT' : `${period - 4}OT`;
   }
 
-  // ESPN shows the clock, a dash and the quarter in three spans ("7:42", " - ", "3rd").
+  // ESPN shows the clock, a dash and the quarter in three spans ("7:42", " - ", "3rd")
   function statusParts(status) {
     if (status.state === 'post') return [status.detail || 'Final', '', ''];
     if (status.state === 'pre') return [status.detail || '', '', ''];
@@ -57,8 +56,8 @@
     const sides = halves.map((h) => ({ ...h, team: (snapshot.teams || []).find((t) => t.abbrev?.toLowerCase() === h.abbr) }));
     if (sides.some((s) => !s.team || !scoreElement(s.el))) return null;
 
-    // A finished game marks the winner with an arrow and mutes the loser's colors. Give
-    // both teams the winner's look, as during play (the arrow is hidden below).
+    // a finished game marks the winner with an arrow and mutes the loser's colors, so give
+    // both teams the winner's look, as during play (the arrow is hidden below)
     const winner = sides.find((s) => scoreElement(s.el).querySelector('svg'));
     if (winner) {
       const loser = sides.find((s) => s !== winner);
@@ -72,7 +71,7 @@
 
     for (const side of sides) {
       const { team } = side;
-      // ESPN's logo loads lazily, so the hidden original's is often still a placeholder.
+      // ESPN loads logos lazily, so the hidden original's is often still a placeholder
       setImage(teamLinks(side.el).find(hasLogo), team.logo, '');
       w.set(scoreElement(side.el), team.score ?? '');
       for (const rec of recordElements(side.el)) {
@@ -80,15 +79,15 @@
         w.set(total, team.record?.total || '');
         if (venue) w.set(venue, team.record?.venue ? `, ${team.record.venue} ${team.homeAway === 'home' ? 'Home' : 'Away'}` : '');
       }
-      // Live-only details: icons (possession, the winner arrow), timeouts left (a row of
-      // dots) and "Bonus". Hidden in place so the layout doesn't shift.
+      // live-only details (possession and winner-arrow icons, timeouts left as a row of dots,
+      // "Bonus") are hidden in place so the layout doesn't shift
       for (const el of side.el.querySelectorAll('*')) {
         const dots = el.children.length >= 3 && [...el.children].every((c) => !c.children.length && !c.textContent.trim());
         if (dots || /^bonus$/i.test(ownText(el)) || el.tagName.toLowerCase() === 'svg') el.style.visibility = 'hidden';
       }
     }
 
-    // Clock and quarter: the spans next to the quarter-by-quarter table (outside it).
+    // clock and quarter, in the spans next to (not inside) the quarter-by-quarter table
     const table = copy.querySelector('table');
     const headRow = table?.querySelector('thead tr');
     if (!headRow) return null;
@@ -101,8 +100,8 @@
     if (statusSpans.length >= 3) statusSpans.forEach((s, i) => w.set(s, parts[i] ?? ''));
     else statusSpans.forEach((s, i) => w.set(s, i === 0 ? parts.join('') : ''));
 
-    // Quarter-by-quarter table: as many quarter columns as the synced game has reached
-    // (at least four), so an overtime column can't appear early.
+    // quarter-by-quarter table gets as many quarter columns as the synced game has reached
+    // (at least four), so an overtime column can't appear early
     const bodyRows = [...table.querySelectorAll('tbody tr')];
     const periods = Math.max(4, ...sides.map((s) => s.team.linescores?.length || 0));
     const rows = [headRow, ...bodyRows];
@@ -127,13 +126,13 @@
       }
     }
 
-    // Any other text is cleared (a playoff note like "BOS leads series 2-1" changes after
-    // the game). Team names, buttons and the quarter headings stay.
+    // clear any other text (a playoff note like "BOS leads series 2-1" changes after the
+    // game), keeping team names, buttons and quarter headings
     return { teams: 2, cleared: w.clearRest(copy, 'thead, a, button, tbody td:first-child', { allText: true }) };
   }
 
-  // A synced copy of ESPN's score strip, ready to insert, or null if the layout isn't
-  // recognized (then the caller shows its own strip).
+  // a synced copy of ESPN's score strip ready to insert, or null if the layout isn't
+  // recognized (the caller then shows its own strip)
   function buildCopy(original, snapshot) {
     const copy = prepare(original);
     const result = rewrite(copy, snapshot);

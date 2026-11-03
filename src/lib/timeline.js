@@ -1,15 +1,14 @@
-// Pure helpers for the recorded timeline: which moment the user's stream is at, and
-// what ESPN looked like at that moment.
+// pure helpers for finding the moment the user's stream is at and what ESPN showed then
 
-// The latest recorded time that is safe to show. Everything captured after it may
-// contain plays the user hasn't seen yet.
+// latest recorded time that's safe to show
+// anything captured after it may include plays the user hasn't seen yet
 export function cursorTime(nowMs, delayMs, marginMs) {
   return nowMs - delayMs - marginMs;
 }
 
-// Fold a fresh play list from ESPN into the stored set (a Map of id -> play), keeping
-// when each play first appeared and when it disappeared (ESPN occasionally deletes or
-// rewrites plays). Returns the plays that changed and need saving.
+// fold a fresh ESPN play list into the stored Map (id -> play), tracking when each play
+// first appeared and when it disappeared (ESPN sometimes deletes or rewrites plays)
+// returns the plays that changed and need saving
 export function mergePlays(stored, fresh, seenAt) {
   const changed = [];
   const freshIds = new Set();
@@ -22,7 +21,7 @@ export function mergePlays(stored, fresh, seenAt) {
       changed.push(next);
     }
   }
-  // An empty list is more likely a glitch than ESPN wiping the game, so ignore it.
+  // an empty list is more likely a glitch than ESPN wiping the game, so ignore it
   if (fresh.length) {
     for (const prev of stored.values()) {
       if (prev.removedAt == null && !freshIds.has(prev.id)) {
@@ -44,7 +43,7 @@ function sameContent(a, b) {
   return true;
 }
 
-// The plays ESPN had published when a snapshot was captured, in game order.
+// plays ESPN had published when a snapshot was captured, in game order
 export function playsAt(plays, capturedAt) {
   return plays
     .filter((p) => p.firstSeen <= capturedAt && !(p.removedAt != null && p.removedAt <= capturedAt))

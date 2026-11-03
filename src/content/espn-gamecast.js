@@ -1,9 +1,8 @@
-// Keeps ESPN's own Gamecast and Play-by-Play widgets that are text: Last Plays, Game
-// Leaders, Team Stats, Game Information and the play-by-play list. Each is a copy of
-// ESPN's widget rewritten from the synced snapshot, with any other text cleared. The
-// other widgets (win probability and shot charts, lineups, highlights, odds, standings,
-// news) stay hidden.
-// Runs as a content script (exposes globalThis.NSSEspnGamecast) and is imported by tests.
+// copies ESPN's Gamecast and Play-by-Play text widgets (Last Plays, Game Leaders, Team
+// stats, Game Information, play-by-play list) and rewrites them from the synced snapshot,
+// clearing other text, while the rest (win probability and shot charts, lineups,
+// highlights, odds, standings, news) stay hidden
+// content script exposing globalThis.NSSEspnGamecast, also imported by the tests
 (function () {
   const { prepare, writer, ownText, setImage: setPicture } = globalThis.NSSCopy;
 
@@ -20,7 +19,7 @@
   const leaves = (root) => [...root.querySelectorAll('*')].filter((el) => !el.children.length);
   const orderedTeams = (snapshot) => ['away', 'home'].map((side) => (snapshot.teams || []).find((t) => t.homeAway === side));
 
-  // The widget an element belongs to: its ancestor directly inside one of the page's columns.
+  // an element's widget is its ancestor directly inside one of the page's columns
   function widgetOf(el) {
     return el?.closest('.PageLayout__Main > *, .PageLayout__LeftAside > *, .PageLayout__RightAside > *') || null;
   }
@@ -43,16 +42,16 @@
     buildCopy(original, snapshot, plays) {
       const copy = prepare(original);
       const w = writer();
-      // The court animation and any "live" badge reflect the live game.
+      // the court animation and any "live" badge reflect the live game
       for (const el of copy.querySelectorAll('[data-testid="rive-animation-wrapper"], canvas')) hide(el);
 
-      // Each play card has the play's time ("7:42 - 3rd") and its text in a <p>.
+      // each play card has the play's time ("7:42 - 3rd") and its text in a <p>
       const isCard = (el) => el.querySelector(':scope > p') && leaves(el).some((l) => /\d:\d\d|\d\.\d/.test(l.textContent) && /-/.test(l.textContent));
       const cards = [...copy.querySelectorAll('div')].filter(isCard);
       if (!cards.length) return null;
       const list = cards[0].parentElement;
-      // ESPN animates the newest card in from above (hidden until it slides down); the
-      // settled cards are what's visible, and one is the template.
+      // ESPN animates the newest card in from above (hidden until it slides down), so only
+      // the settled cards are visible, and one of them is the template
       const settled = cards.filter((c) => !/top:\s*-/.test(c.getAttribute('style') || ''));
       const template = settled[0] || cards[0];
       const teams = new Map((snapshot.teams || []).map((t) => [t.id, t]));
@@ -62,13 +61,13 @@
         const card = template.cloneNode(true);
         const team = teams.get(play.teamId);
         setPicture(card, play.athleteId ? headshot(play.athleteId) : team?.logo, '');
-        // The dotted marker in the team's color.
+        // the dotted marker in the team's color
         for (const bar of card.querySelectorAll('div[style*="background"]')) {
           if (team?.color) bar.setAttribute('style', bar.getAttribute('style').replace(/#[0-9a-f]{3,8}/i, `#${team.color}`));
         }
         const time = leaves(card).find((l) => /\d:\d\d|\d\.\d/.test(l.textContent) && /-/.test(l.textContent));
         if (time) w.set(time, `${play.clock} - ${periodLabel(play.period)}`);
-        // Live win probability ("Win %: SAC, 61.2"): hide its whole line.
+        // hide the whole live win probability line ("Win %: SAC, 61.2")
         const winChance = [...card.querySelectorAll('*')].find((el) => /win\s*%/i.test(ownText(el)));
         hide(winChance?.parentElement && winChance.parentElement !== card ? winChance.parentElement : winChance);
         const type = card.querySelector(':scope > span');
@@ -85,7 +84,7 @@
       for (const card of cards) card.remove();
       list.append(...fresh);
 
-      // The team logo next to the list: the latest play's team.
+      // the team logo next to the list shows the latest play's team
       const columnLogo = list.parentElement?.querySelector(':scope > div > picture, :scope > picture');
       if (columnLogo) setPicture(columnLogo, teams.get(recent[0]?.teamId)?.logo, '');
 
@@ -116,7 +115,7 @@
       const w = writer();
       const teams = orderedTeams(snapshot);
       if (teams.some((t) => !t)) return null;
-      // The team logos above the leaders (away, then home).
+      // the team logos above the leaders (away, then home)
       teams.forEach((team, i) => setPicture(copy.querySelectorAll('a[href*="/team/"]')[i], team.logo, ''));
       let filled = 0;
       for (const section of copy.querySelectorAll('section')) {
@@ -142,7 +141,7 @@
         });
       }
       if (!filled) return null;
-      // Headings, team abbreviations and the footer link stay; anything else is cleared.
+      // clear anything else, keeping headings, team abbreviations and the footer link
       w.clearRest(copy, 'h2, header, footer, [data-testid="prism-VisuallyHidden"], a[href*="/team/"]', { allText: true });
       return { copy, result: { leaders: filled } };
     },
@@ -155,7 +154,7 @@
     'Three Point %': 'threePointFieldGoalsMade-threePointFieldGoalsAttempted',
     'Free Throw %': 'freeThrowsMade-freeThrowsAttempted',
   };
-  // Which of ESPN's team stats each row shows (others are matched by label).
+  // which of ESPN's team stats each row shows (others are matched by label)
   const ROW_STAT = {
     Turnovers: 'totalTurnovers',
     Rebounds: 'totalRebounds',
@@ -176,7 +175,7 @@
       const byLabel = (stats, label) => stats.find((s) => s.label === label);
       const byName = (stats, name) => stats.find((s) => s.name === name);
 
-      // Team logos in the header.
+      // team logos in the header
       teams.forEach((team, i) => setPicture(copy.querySelectorAll('a[href*="/team/"]')[i], team.logo, ''));
 
       let rows = 0;
@@ -200,7 +199,7 @@
           if (value) w.set(value, values[i].text);
           if (detail) w.set(detail, values[i].made ? `(${values[i].made})` : '');
         });
-        // Comparison bars: each team's percentage, or each team's share of the total.
+        // comparison bars show each team's percentage, or each team's share of the total
         const bars = [...row.parentElement.querySelectorAll('[data-testid="prism-ProgressBar"]')];
         const [a, h] = values.map((v) => v.number);
         const widths = (bar, first, second) => {
@@ -230,8 +229,8 @@
   const gameInfo = {
     findOriginal: (doc) => widgetTitled(doc, 'Game Information'),
 
-    // Venue, broadcasters and referees don't change. Any other number (like attendance,
-    // posted after the game) is cleared; the date and tip-off time stay.
+    // venue, broadcasters and referees don't change, but other numbers (like attendance,
+    // posted after the game) are cleared, keeping the date and tip-off time
     buildCopy(original) {
       const copy = prepare(original);
       const walker = copy.ownerDocument.createTreeWalker(copy, 4 /* NodeFilter.SHOW_TEXT */);
@@ -247,18 +246,18 @@
 
   // ---- Play-by-Play list -------------------------------------------------------------
 
-  // The score shown on a play: two spans (away, home), the scoring team's in bold.
+  // a play's score is two spans (away, home), with the scoring team's in bold
   const scoreOf = (el) => [...el.querySelectorAll('div')].find((d) => d.children.length === 2 && [...d.children].every((s) => s.tagName.toLowerCase() === 'span'));
 
   const playByPlay = {
     findOriginal: (doc) => widgetOf([...doc.querySelectorAll('[data-testid="PlayByPlay"]')].find(notCopy)),
 
-    // ESPN's list holds the newest plays first and loads more as you scroll; the copy
-    // holds every synced play, newest first, in ESPN's markup.
+    // ESPN's list shows the newest plays first and loads more on scroll, while the copy
+    // holds every synced play, newest first, in ESPN's markup
     buildCopy(original, snapshot, plays) {
       const copy = prepare(original);
       const w = writer();
-      // The shot chart plots every shot so far, and its filters only work on ESPN's list.
+      // the shot chart plots every shot so far, and its filters only work on ESPN's list
       for (const el of copy.querySelectorAll('[data-testid="ShotChartFilterButtons"], .ShotChart, section:has([data-testid="ShotChart"])')) hide(el);
 
       const items = [...copy.querySelectorAll('[data-testid="PlayByPlay"] [data-testid="prism-Accordion"]')].map((a) => a.parentElement);
@@ -277,13 +276,13 @@
         .map((play) => {
           const item = ((play.scoring && scoring) || plain).cloneNode(true);
           const section = item.querySelector('[data-testid="prism-Accordion"]');
-          // Expanded details (live win probability, an animation) and the expand control.
+          // hide expanded details (live win probability, an animation) and the expand control
           for (const child of item.children) if (child !== section) hide(child);
           hide(section.querySelector('[role="region"]'));
           const button = section.querySelector('button') || section;
           const team = teams.get(play.teamId);
           setPicture(button, play.athleteId ? headshot(play.athleteId) : team?.logo, '');
-          // The marker in the team's color: dotted for most plays, solid for scoring plays.
+          // the marker in the team's color, dotted for most plays and solid for scoring plays
           for (const marker of button.querySelectorAll('div[style*="background"]')) {
             if (team?.color) marker.setAttribute('style', marker.getAttribute('style').replace(/#[0-9a-f]{3,8}/i, `#${team.color}`));
           }
@@ -307,10 +306,10 @@
           }
           return item;
         });
-      // Replace ESPN's items and its load-more placeholder.
+      // replace ESPN's items and its load-more placeholder
       list.replaceChildren(...fresh);
 
-      // The team logo beside the list: the latest play's team.
+      // the team logo beside the list shows the latest play's team
       const column = list.parentElement;
       const columnLogo = column?.querySelector(':scope > div > picture, :scope > picture');
       if (columnLogo) setPicture(columnLogo, teams.get([...(plays || [])].sort((a, b) => b.seq - a.seq)[0]?.teamId)?.logo, '');
@@ -322,7 +321,7 @@
 
   // ---- Team Stats page table ---------------------------------------------------------
 
-  // A plain table: a row per stat (labelled as in ESPN's data), away team then home.
+  // a plain table with a row per stat (labelled as in ESPN's data), away team then home
   const matchupTable = {
     findOriginal: (doc) => widgetOf([...doc.querySelectorAll('[data-testid="teamStatsTable"]')].find(notCopy)),
 

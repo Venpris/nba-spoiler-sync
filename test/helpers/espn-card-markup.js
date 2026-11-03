@@ -1,6 +1,6 @@
-// Builds a scoreboard card shaped like ESPN's (structure and class names as of November
-// 2026) with stand-in live values. `state` is 'in' (last play) or 'post' (recap video in
-// place of the last play, winner icon, a Recap button). `periods` = quarter columns shown.
+// scoreboard card with ESPN's structure and class names (as of November 2026) and stand-in live values
+// `state` is 'in' (last play) or 'post' (recap video instead, winner icon, Recap button)
+// `periods` is the number of quarter columns
 export function espnCardHtml({ id, away, home, state = 'in', periods = 4, live = '99' }) {
   const href = (t) => `/nba/team/_/name/${t.abbrev.toLowerCase()}/team`;
   const team = (t, side) => `

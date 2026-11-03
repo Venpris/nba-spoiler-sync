@@ -1,12 +1,12 @@
-// Builds the panel that replaces ESPN's game content: score strip, box score,
-// play-by-play and team stats, all from the synced snapshot. Runs as a content script
-// (exposes globalThis.NSSView) and is imported directly by the tests.
+// builds the panel that replaces ESPN's game content (score strip, box score, play-by-play
+// and team stats) from the synced snapshot
+// runs as a content script exposing globalThis.NSSView, and the tests import it directly
 (function () {
   const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
   const safeUrl = (url) => (/^https:\/\/[^\s"'<>]+$/.test(url || '') ? url : '');
 
-  // The ESPN game id in an NBA game page URL (/nba/boxscore/_/gameId/123 or ?gameId=123).
+  // ESPN game id from an NBA game page URL (/nba/boxscore/_/gameId/123 or ?gameId=123)
   function nbaGameIdFromUrl(href) {
     let url;
     try {
@@ -49,7 +49,7 @@
     return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
   }
 
-  // Away team first, as ESPN lays out NBA games.
+  // away team first, as ESPN lays out NBA games
   function orderedTeams(snapshot) {
     const teams = snapshot.teams || [];
     return [teams.find((t) => t.homeAway === 'away'), teams.find((t) => t.homeAway === 'home')].filter(Boolean);
@@ -60,7 +60,7 @@
     return src ? `<img class="nss-logo" src="${esc(src)}" alt="" width="${size}" height="${size}">` : '';
   }
 
-  // ---- Score strip -----------------------------------------------------------------
+  // ---- score strip -----------------------------------------------------------------
 
   function statusLine(snapshot) {
     const s = snapshot.status || {};
@@ -125,7 +125,7 @@
     </div>${error}`;
   }
 
-  // ---- Box score -------------------------------------------------------------------
+  // ---- box score -------------------------------------------------------------------
 
   function playerRow(player, columns) {
     const name = `<td class="nss-name"><span class="nss-player">${esc(player.shortName || player.name)}</span>${
@@ -170,7 +170,7 @@
     return sections || card('Box score', '<p class="nss-note">ESPN hasn’t posted a box score yet.</p>');
   }
 
-  // ---- Play-by-play ----------------------------------------------------------------
+  // ---- play-by-play ----------------------------------------------------------------
 
   function renderPlays(snapshot, plays, limit) {
     const teams = new Map((snapshot.teams || []).map((t) => [t.id, t]));
@@ -206,7 +206,7 @@
     return card(limit ? 'Last plays' : 'Play-by-play', body);
   }
 
-  // ---- Team stats ------------------------------------------------------------------
+  // ---- team stats ------------------------------------------------------------------
 
   function renderTeamStats(snapshot) {
     const [away, home] = orderedTeams(snapshot);
@@ -224,9 +224,9 @@
     );
   }
 
-  // ---- Scoreboard card ------------------------------------------------------------
+  // ---- scoreboard card ------------------------------------------------------------
 
-  // Links to the synced game's own pages (which show synced stats too).
+  // links to the synced game's own pages, which show synced stats too
   function gameLinks(gameId) {
     return [
       ['game', 'Gamecast'],
@@ -237,7 +237,7 @@
       .join('');
   }
 
-  // Replaces the synced game's card on ESPN's scoreboard.
+  // replaces the synced game's card on ESPN's scoreboard
   function renderScoreCard(view, game) {
     const links = `<nav class="nss-sc__links">${gameLinks(game.id)}</nav>`;
     const snapshot = view?.status === 'ready' ? view.snapshot : null;

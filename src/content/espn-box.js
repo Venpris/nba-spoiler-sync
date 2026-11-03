@@ -1,12 +1,12 @@
-// Keeps ESPN's own box score layout: rewrites a copy of ESPN's box score with the synced
-// stats. Every number in the copy is either written from the synced snapshot or cleared,
-// so a row or column we can't match shows blank, never ESPN's live value.
-// Runs as a content script (exposes globalThis.NSSEspnBox) and is imported by the tests.
+// rewrites a copy of ESPN's box score with the synced stats, keeping ESPN's own layout
+// every number in the copy is either written from the synced snapshot or cleared, so a
+// row or column we can't match shows blank, never ESPN's live value
+// runs as a content script (exposes globalThis.NSSEspnBox) and is imported by the tests
 (function () {
   const { prepare, writer, setImage } = globalThis.NSSCopy;
   const PLAYER_ID = /\/player\/_\/id\/(\d+)/;
 
-  // The element to copy: ESPN's box score card (or the box score itself).
+  // the element to copy, ESPN's box score card (or the box score itself)
   function findOriginal(doc) {
     const box = [...doc.querySelectorAll('.Boxscore__ResponsiveWrapper')].find((el) => !el.closest('[data-nss-copy]'));
     if (!box) return null;
@@ -19,7 +19,7 @@
     return (snapshot.teams || []).find((t) => [t.name, t.shortName, t.abbrev].some((n) => n && n.toLowerCase() === name)) || null;
   }
 
-  // Column labels (MIN, PTS, ...) from the stats table's header row.
+  // column labels (MIN, PTS, ...) from the stats table's header row
   function columnLabels(statsTable) {
     const header = [...statsTable.querySelectorAll('tbody tr')].find((tr) => tr.querySelector('.Table__customHeader'));
     return header ? [...header.children].map((td) => td.textContent.trim()) : [];
@@ -55,7 +55,7 @@
       const statCellTemplate = statsTable.querySelector('td.BoxscoreItem__Stat');
       const noteCellTemplate = statsTable.querySelector('td.BoxscoreItem__DNP, td[colspan]');
 
-      // One cell per column, as ESPN lays out a player who played.
+      // one cell per column, as ESPN lays out a player who played
       const fillCells = (row, values) => {
         let cells = [...row.children];
         if (cells.length !== labels.length || row.querySelector('td[colspan]')) {
@@ -71,7 +71,7 @@
         }
         cells.forEach((cell, i) => setText(cell, values[i] ?? ''));
       };
-      // One cell across the row, as ESPN shows "DNP-COACH'S DECISION".
+      // one cell across the row, as ESPN shows "DNP-COACH'S DECISION"
       const fillNote = (row, text) => {
         let cell = row.children.length === 1 ? row.children[0] : null;
         if (!cell) {
@@ -105,21 +105,21 @@
           afterTeamRow = true;
           continue;
         } else if (afterTeamRow && !rowLabel) {
-          // Shooting percentages under FG, 3PT and FT.
+          // shooting percentages under FG, 3PT and FT
           fillCells(statRow, labels.map((l) => (['FG', '3PT', 'FT'].includes(l) ? percent(valueFor(entry?.totals, l)) : '')));
         }
         afterTeamRow = false;
       }
     }
 
-    // Anything else with a digit in it that we didn't write is cleared. Column headers
-    // ("3PT") and jersey numbers don't change during a game, so they stay.
+    // clear any other text with a digit, except column headers ("3PT") and jersey numbers,
+    // which don't change during a game
     result.cleared = w.clearRest(copy, '.playerJersey, .Table__customHeader');
     return result;
   }
 
-  // A synced copy of ESPN's box score, ready to insert, or null if the layout isn't
-  // recognized (then the caller falls back to its own panel).
+  // a synced copy of ESPN's box score ready to insert, or null if the layout isn't
+  // recognized (the caller then falls back to its own panel)
   function buildCopy(original, snapshot) {
     const copy = prepare(original);
     const result = rewrite(copy, snapshot);

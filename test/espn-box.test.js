@@ -1,4 +1,4 @@
-// Rewriting a copy of ESPN's own box score with synced stats.
+// rewriting a copy of ESPN's own box score with synced stats
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -16,7 +16,7 @@ function setup(markupOptions) {
   return { Box: window.NSSEspnBox, doc: window.document };
 }
 
-// The stat cells of a player's row in a box score, by athlete id.
+// a player's stat cells in a box score, by athlete id
 function rowFor(root, athleteId) {
   const link = root.querySelector(`a[href*="/player/_/id/${athleteId}/"]`);
   const idx = link.closest('tr').getAttribute('data-idx');
@@ -40,7 +40,7 @@ test('every number comes from the synced snapshot, laid out in ESPN’s own mark
       else assert.deepEqual(cells, p.stats, p.name);
     }
   }
-  // Team totals and shooting percentages.
+  // team totals and shooting percentages
   const teamBlock = [...copy.querySelectorAll('.Boxscore__ResponsiveWrapper > .Wrapper')][0];
   const statsRows = [...[...teamBlock.querySelectorAll('table')].at(-1).querySelectorAll('tr')];
   const totals = snapshot.box.find((b) => b.teamId === snapshot.teams.find((t) => t.name === teamBlock.querySelector('.BoxscoreItem__TeamName').textContent).id).totals;
@@ -48,20 +48,20 @@ test('every number comes from the synced snapshot, laid out in ESPN’s own mark
   const [fgm, fga] = totals[2].split('-').map(Number);
   assert.equal(statsRows.at(-1).children[2].textContent, `${Math.round((100 * fgm) / fga)}%`);
 
-  // Nothing of ESPN's live data is left; labels, names and jerseys are.
+  // none of ESPN's live data is left, but labels, names and jerseys are
   assert.ok(!/\b99\b/.test(copy.textContent));
   assert.ok(copy.textContent.includes('3PT') && copy.textContent.includes('starters'));
   assert.ok(copy.querySelector('.playerJersey').textContent.length > 0);
-  // The original is left alone.
+  // the original is left alone
   assert.ok(/\b99\b/.test(original.textContent));
 });
 
 test('rows that don’t match are blanked, and rows change shape to fit the synced data', () => {
   const benchPlayer = fixture.boxscore.players[0].statistics[0].athletes.find((a) => !a.starter && !a.didNotPlay);
-  // ESPN shows this player as DNP (live), but at the synced moment he had played.
+  // ESPN shows this player as DNP (live), but at the synced moment he had played
   const { Box, doc } = setup({ dnpIds: [benchPlayer.athlete.id] });
   const snapshot = trimSnapshot(fixture);
-  // And one starter isn't in the synced data at all.
+  // and one starter isn't in the synced data at all
   const missing = snapshot.box[0].players.find((p) => p.starter);
   snapshot.box[0].players = snapshot.box[0].players.filter((p) => p !== missing);
 

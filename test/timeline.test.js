@@ -10,21 +10,21 @@ test('mergePlays records when plays appear, change and disappear', () => {
   assert.equal(changed.length, 2);
   assert.equal(stored.get('a').firstSeen, 100);
 
-  // Unchanged plays are not rewritten (NaN fields compare equal).
+  // unchanged plays aren't rewritten (NaN fields compare equal)
   changed = mergePlays(stored, [play('a', 1), play('b', 2)], 200);
   assert.equal(changed.length, 0);
 
-  // Edited text keeps the original firstSeen; a new play gets the new time.
+  // edited text keeps the original firstSeen, a new play gets the new time
   changed = mergePlays(stored, [play('a', 1, 'edited'), play('b', 2), play('c', 3)], 300);
   assert.deepEqual(changed.map((p) => p.id).sort(), ['a', 'c']);
   assert.equal(stored.get('a').firstSeen, 100);
   assert.equal(stored.get('c').firstSeen, 300);
 
-  // A play ESPN deletes is marked, not forgotten.
+  // a play ESPN deletes is marked, not forgotten
   mergePlays(stored, [play('a', 1, 'edited'), play('c', 3)], 400);
   assert.equal(stored.get('b').removedAt, 400);
 
-  // An empty response is treated as a glitch.
+  // an empty response is treated as a glitch
   assert.equal(mergePlays(stored, [], 500).length, 0);
   assert.equal(stored.get('a').removedAt, null);
 });

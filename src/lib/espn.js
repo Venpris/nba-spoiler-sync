@@ -1,6 +1,6 @@
-// ESPN's public (undocumented) site API, plus trimming of its responses down to what we
-// store. Anything not copied here (win probability, news, odds...) is dropped on arrival
-// so it can never reach a page.
+// ESPN's public (undocumented) site API, and trimming its responses to what we store
+// anything not copied here (win probability, news, odds...) is dropped on arrival so it
+// can never reach a page
 import { parseClock } from './clock.js';
 
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba';
@@ -13,8 +13,8 @@ async function getJson(url) {
   return { json, receivedAt, serverDate: res.headers.get('date'), age: res.headers.get('age') };
 }
 
-// Today's slate as ESPN defines it. Only names and tip-off time leave this function:
-// no scores, no status (even "Final" or "OT" would give something away).
+// today's slate as ESPN defines it, with only names and tip-off time
+// no scores or status, since even "Final" or "OT" would give something away
 export async function fetchGames() {
   const { json } = await getJson(`${BASE}/scoreboard`);
   return (json.events || []).map((e) => {
@@ -35,11 +35,11 @@ export async function fetchSummary(gameId) {
   return getJson(`${BASE}/summary?event=${encodeURIComponent(gameId)}`);
 }
 
-// Estimate ESPN server time minus local time from a response's Date (and Age) headers.
+// estimate ESPN server time minus local time from a response's Date (and Age) headers
 export function skewSample({ serverDate, age, receivedAt }) {
   const server = Date.parse(serverDate);
   if (!Number.isFinite(server)) return null;
-  // Date has whole-second resolution; +500ms centers the estimate.
+  // Date has whole-second resolution, so +500ms centers the estimate
   return server + (Number(age) || 0) * 1000 + 500 - receivedAt;
 }
 
@@ -53,7 +53,7 @@ export function trimPlays(json) {
     wallclockMs: Date.parse(p.wallclock),
     text: p.text ?? '',
     type: p.type?.text ?? '',
-    label: p.shortDescription ?? '', // "+3 Points", "Missed FG", "Rebound": as on ESPN's play cards
+    label: p.shortDescription ?? '', // ESPN's play-card label, like "+3 Points", "Missed FG" or "Rebound"
     teamId: p.team?.id ?? null,
     athleteId: p.participants?.[0]?.athlete?.id ?? null,
     scoring: Boolean(p.scoringPlay),
@@ -62,10 +62,10 @@ export function trimPlays(json) {
   }));
 }
 
-// Quarter and clock for a game in progress. ESPN's header clock normally runs live, but it
-// can get stuck (it once read 0.0 well into the 4th quarter), so it's only used when it
-// agrees with the latest play: same quarter, and no more time left than at that play.
-// Otherwise the latest play's quarter and clock are used.
+// quarter and clock for a game in progress
+// ESPN's header clock runs live but can get stuck (it once read 0.0 well into the 4th
+// quarter), so trust it only when it matches the latest play's quarter and shows no more
+// time left than that play, otherwise use the play's quarter and clock
 function gameClock(status, last) {
   if (!last) return { period: status.period ?? null, clock: status.displayClock ?? null, endOfPeriod: false };
   const headerSec = parseClock(String(status.displayClock ?? ''));
@@ -79,8 +79,8 @@ function gameClock(status, last) {
   };
 }
 
-// The parts of ESPN's game state the ESPN-page panel shows. `plays` is the trimmed
-// play list from the same response, used to check and fill in the quarter and clock.
+// the parts of ESPN's game state the ESPN-page panel shows
+// `plays` (trimmed, from the same response) checks and fills in the quarter and clock
 export function trimSnapshot(json, plays = trimPlays(json)) {
   const comp = json.header?.competitions?.[0] || {};
   const status = comp.status || {};
@@ -96,8 +96,8 @@ export function trimSnapshot(json, plays = trimPlays(json)) {
     color: c.team?.color || null,
     score: c.score ?? null,
     linescores: (c.linescores || []).map((l) => l.displayValue),
-    // Records change when the game ends, but a snapshot only ever has them as of when it
-    // was recorded, which is before the point the viewer is at.
+    // records change when the game ends, but a snapshot only has them as of capture time,
+    // which is before the viewer's point in the game
     record: {
       total: (c.record || []).find((r) => r.type === 'total')?.summary ?? null,
       venue: (c.record || []).find((r) => r.type === (c.homeAway === 'home' ? 'home' : 'road'))?.summary ?? null,

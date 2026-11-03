@@ -1,41 +1,43 @@
 /*
- * Hiding rules. These fail closed: anything that could show the synced game's live
- * score is hidden first, and shield.js only reveals what's safe. The attributes on
- * <html> are set by shield.js:
+ * hiding rules that fail closed, so anything that could show the synced game's live
+ * score is hidden first and shield.js only reveals what's safe
+ * attributes shield.js sets on <html>:
  *   data-nss-on        the extension is on (set before the page renders)
  *   data-nss-gamepage  this is an NBA game page (set before the page renders)
  *   data-nss-ready     we know which game is synced
  *   data-nss-here      this page belongs to the synced game
  *   data-nss-mounted   our panel is in place
- *   data-nss-fallback  ESPN's layout wasn't recognized; show only our panel
- * and data-nss-keep on the elements that contain our panel, data-nss-copy on the synced
- * copies of ESPN's score strip and box score.
+ *   data-nss-fallback  ESPN's layout wasn't recognized, so only our panel shows
+ *   data-nss-card-copy the scoreboard card's synced copy is showing (ESPN's is hidden)
+ * plus data-nss-keep on the elements containing our panel, and data-nss-copy on the
+ * synced copies of ESPN's own elements
  */
 
-/* ESPN's live scores ticker, on every page. */
+/* ESPN's live scores ticker, on every page */
 html[data-nss-on] .HeaderScoreboardWrapper { display: none !important; }
 
-/* Any NBA game page stays blank until we know whether it's the synced game. */
+/* any NBA game page stays blank until we know whether it's the synced game */
 html[data-nss-gamepage]:not([data-nss-ready]) body { visibility: hidden !important; }
 
-/* Scoreboard cards stay hidden until we know which one to cover. */
+/* scoreboard cards stay hidden until we know which one to cover */
 html[data-nss-on]:not([data-nss-ready]) section.Scoreboard { visibility: hidden !important; }
 
 /*
- * The synced game's pages. Every element from our panel up to ESPN's main content area is
- * marked data-nss-keep; everything else in that area is hidden, except ESPN's game tabs.
- * This doesn't depend on what ESPN calls its score strip, dock, sidebars and so on.
+ * the synced game's pages
+ * every element from our panel up to ESPN's main content area is marked data-nss-keep,
+ * and everything else in that area is hidden except ESPN's game tabs, so this doesn't
+ * depend on what ESPN calls its score strip, dock, sidebars and so on
  */
 html[data-nss-here] [data-nss-keep] > :not([data-nss-keep]):not(#nss-strip):not(#nss-root):not([data-nss-copy]):not(.NavSecondary--GamePackage) {
   display: none !important;
 }
-/* When ESPN's own (synced) strip or box score is shown, ours are empty. */
+/* when ESPN's own (synced) strip or box score is shown, ours are empty */
 #nss-strip:empty,
 #nss-root:empty { display: none !important; }
 html[data-nss-here]:not([data-nss-mounted]) body { visibility: hidden !important; }
 html[data-nss-fallback] body > :not(#nss-strip):not(#nss-root) { display: none !important; }
 
-/* ---- Our panel ------------------------------------------------------------------- */
+/* ---- our panel ------------------------------------------------------------------- */
 
 #nss-strip,
 #nss-root {
@@ -157,7 +159,7 @@ html[data-nss-fallback] body > :not(#nss-strip):not(#nss-root) { display: none !
 
 html[data-nss-fallback] #nss-strip { margin-top: 0; }
 
-/* ---- Scoreboard card (sits over the synced game's hidden ESPN card) --------------- */
+/* ---- scoreboard card (sits over the synced game's hidden ESPN card) --------------- */
 
 #nss-scorecard {
   position: absolute;

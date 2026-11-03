@@ -1,6 +1,6 @@
-// Builds Gamecast widgets shaped like ESPN's (structure as of November 2026; class names
-// mostly dropped) with stand-in live values: Last Plays, Game Leaders, Team Stats, Game
-// Information, plus widgets the extension must keep hidden (win probability, odds, news).
+// Gamecast widgets with ESPN's structure (as of November 2026, class names mostly dropped)
+// and stand-in live values, covering Last Plays, Game Leaders, Team Stats, Game Information
+// and widgets the extension must keep hidden (win probability, odds, news)
 const href = (t) => `/nba/team/_/name/${t.abbrev.toLowerCase()}/team`;
 const picture = () => '<picture data-testid="prism-picture"><source srcset="live.png"><img alt=""></picture>';
 
@@ -78,9 +78,9 @@ export function gameInfoHtml() {
 </section>`;
 }
 
-// The Play-by-Play page's main widget: tabs, shot chart filters, shot chart and the play
-// list (newest first; scoring plays show the score, the scoring team's in bold), ending in
-// ESPN's load-more placeholder.
+// the Play-by-Play page's main widget with tabs, shot chart filters, shot chart and the play
+// list (newest first, scoring plays show the score with the scoring team's in bold), ending
+// in ESPN's load-more placeholder
 export function playByPlayHtml({ live = '99' } = {}) {
   const item = (scoring) => `
     <div style="margin-top:0px">
@@ -116,8 +116,8 @@ export function playByPlayHtml({ live = '99' } = {}) {
 </div>`;
 }
 
-// The Team Stats page's main table (structure as of November 2026): a row per stat with
-// the away team's value, then the home team's.
+// the Team Stats page's main table (structure as of November 2026), one row per stat with
+// the away team's value, then the home team's
 export const MATCHUP_ROWS = [
   'FG', 'Field Goal %', '3PT', 'Three Point %', 'FT', 'Free Throw %', 'Rebounds', 'Offensive Rebounds',
   'Defensive Rebounds', 'Assists', 'Steals', 'Blocks', 'Total Turnovers', 'Points Conceded Off Turnovers',
@@ -135,7 +135,7 @@ export function matchupTableHtml({ live = '99' } = {}) {
 </section>`;
 }
 
-// The three Gamecast columns, ready to drop into a game page skeleton.
+// the three Gamecast columns, ready to drop into a game page skeleton
 export function gamecastColumnsHtml({ away, home, live = '99' }) {
   return `
 <div class="PageLayout page-container cf PageLayout--desktopLg">

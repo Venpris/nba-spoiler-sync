@@ -1,4 +1,4 @@
-// Game-clock helpers. ESPN clocks look like "7:42", "45.2" or "0.0".
+// game-clock helpers for ESPN clocks like "7:42", "45.2" or "0.0"
 
 export function parseClock(text) {
   if (typeof text !== 'string') return NaN;
@@ -17,7 +17,7 @@ export function periodLength(period) {
   return period <= 4 ? 12 * 60 : 5 * 60;
 }
 
-// Seconds of game time played up to this point (the clock counts down within a period).
+// game seconds played so far (the clock counts down within a period)
 export function gameSeconds(period, clockSec) {
   let total = 0;
   for (let p = 1; p < period; p++) total += periodLength(p);

@@ -1,6 +1,6 @@
-// IndexedDB storage for the recording, so a suspended service worker doesn't lose it.
-// snapshots: one record per distinct ESPN game state, keyed by capture time (local ms).
-// plays: the play-by-play, keyed by ESPN play id.
+// IndexedDB storage for the recording, so a suspended service worker doesn't lose it
+// snapshots: one per distinct ESPN game state, keyed by capture time (local ms)
+// plays: the play-by-play, keyed by ESPN play id
 
 const DB_NAME = 'nba-spoiler-sync';
 const DB_VERSION = 1;
@@ -22,7 +22,7 @@ function openDb() {
   return dbPromise;
 }
 
-// Run fn(objectStores) in one transaction; resolves with fn's result once committed.
+// run fn(objectStores) in one transaction, resolving with its result once committed
 async function withStores(names, mode, fn) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
@@ -45,7 +45,7 @@ export function putSnapshot(snapshot) {
   return withStores(['snapshots'], 'readwrite', (s) => s.put(snapshot));
 }
 
-// The newest snapshot captured at or before time t, or null.
+// newest snapshot captured at or before time t, or null
 export function snapshotAtOrBefore(t) {
   return withStores(['snapshots'], 'readonly', async (s) => {
     const cursor = await request(s.openCursor(IDBKeyRange.upperBound(t), 'prev'));

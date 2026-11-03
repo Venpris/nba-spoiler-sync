@@ -1,5 +1,5 @@
-// The toolbar popup. It never receives game stats: only the game list (names and
-// tip-off times) and the extension's own status.
+// toolbar popup, which never receives game stats, only the game list (names and
+// tip-off times) and the extension's own status
 import { formatDuration } from '../lib/clock.js';
 
 const $ = (id) => document.getElementById(id);
@@ -40,7 +40,7 @@ function renderGames() {
   const select = $('game');
   const selectedId = status?.game?.id || '';
   const list = [...games];
-  // Keep the synced game selectable even if it has dropped off today's slate.
+  // keep the synced game selectable even if it's dropped off today's slate
   if (status?.game && !list.some((g) => g.id === status.game.id)) list.unshift(status.game);
   select.innerHTML = '';
   select.append(new Option(list.length ? 'Pick a game' : 'No games today', ''));
@@ -79,7 +79,7 @@ function render() {
   }
   if (on && status.error) detail = `${status.error} ${detail}`;
 
-  // The game's ESPN pages are shielded while on, so they're safe to link to at any time.
+  // the game's ESPN pages are shielded while on, so they're always safe to link to
   $('links').hidden = !(on && status.game);
   if (on && status.game) {
     for (const page of ['game', 'boxscore', 'playbyplay']) {
@@ -92,7 +92,7 @@ function render() {
 }
 
 async function doSync() {
-  // Capture the moment first: this is when the stream showed the entered clock.
+  // capture this first, it's the moment the stream showed the entered clock
   const tapAt = Date.now();
   const clock = $('clock').value.trim();
   if (!clock) {
@@ -117,7 +117,7 @@ $('game').addEventListener('change', (e) => {
 
 $('margin').addEventListener('change', (e) => request({ type: 'setMargin', marginMs: Number(e.target.value) }));
 
-// pointerdown rather than click: click fires on release, a beat later.
+// pointerdown rather than click, which fires on release a beat later
 $('sync').addEventListener('pointerdown', (e) => {
   if (e.button === 0) doSync();
 });
@@ -142,7 +142,7 @@ async function init() {
   if (res?.ok) games = res.games;
   else showError(res?.error || "Couldn't load today's games from ESPN.");
   renderGames();
-  // Keep the countdown and status current while the popup is open.
+  // keep the countdown and status current while the popup is open
   setInterval(async () => {
     if (busy) return;
     const next = await send({ type: 'getStatus' });

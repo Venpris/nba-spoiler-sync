@@ -1,5 +1,5 @@
-// Service worker: records ESPN's game state while the extension is on, works out the
-// stream delay when the user syncs, and feeds ESPN tabs only what's safe to show.
+// service worker that records ESPN's game state while the extension is on, works out the
+// stream delay when the user syncs, and feeds ESPN tabs only what's safe to show
 import { fetchGames, fetchSummary, trimPlays, trimSnapshot, skewSample } from './lib/espn.js';
 import { computeSync, SyncError } from './lib/sync.js';
 import { parseClock } from './lib/clock.js';
@@ -13,8 +13,8 @@ const DEFAULT_MARGIN_MS = 10_000;
 const ESPN_PAGES = '*://*.espn.com/*';
 const SCRIPT_IDS = ['nss-nav-hook', 'nss-shield'];
 
-// Runtime state lives in chrome.storage.session so it survives the worker being
-// suspended. The browser clears it on exit, which also turns the extension off.
+// runtime state lives in chrome.storage.session so it survives worker suspension
+// the browser clears it on exit, which also turns the extension off
 let state = { enabled: false, game: null, sync: null, recordingSince: null, skewMs: 0, lastError: null };
 let marginMs = DEFAULT_MARGIN_MS;
 
@@ -26,11 +26,10 @@ let recording = false;
 let pollTimer = null;
 let tickTimer = null;
 let lastPushedKey = null;
-// Bumped whenever the recording is reset, so a poll that was in flight can't write
-// the previous game's data into the new recording.
+// bumped on every reset so an in-flight poll can't write the previous game's data
 let generation = 0;
 
-// Storage operations run one at a time, in order.
+// run storage operations one at a time, in order
 let queue = Promise.resolve();
 function serial(fn) {
   const run = queue.then(fn);
@@ -58,7 +57,7 @@ function saveState() {
   return chrome.storage.session.set({ state });
 }
 
-// ---- Recording -------------------------------------------------------------------
+// ---- recording -------------------------------------------------------------------
 
 function startLoops() {
   if (!recording) {
@@ -88,10 +87,10 @@ async function poll() {
     if (gen === generation) state.lastError = `Can't reach ESPN right now (${err.message}). Retrying…`;
   }
   try {
-    // Writing session storage is an extension API call, which also keeps the worker awake.
+    // writing session storage also keeps the worker awake (it's an extension API call)
     await saveState();
   } catch {
-    // Not worth stopping the recording over; the next poll saves again.
+    // not worth stopping the recording over, the next poll saves again
   }
   if (recording && gen === generation) pollTimer = setTimeout(poll, POLL_MS);
 }
@@ -121,7 +120,7 @@ async function recordOnce(gen) {
   await serial(async () => {
     if (gen !== generation) return;
     if (changedPlays.length) await store.putPlays(changedPlays);
-    // Unchanged states aren't stored again: the previous snapshot already covers them.
+    // skip unchanged states, the previous snapshot already covers them
     if (isNewState) await store.putSnapshot({ capturedAt, ...snapshot });
     await store.pruneSnapshots(capturedAt - KEEP_SNAPSHOTS_MS);
   });
@@ -140,7 +139,7 @@ async function resetRecording() {
   await serial(() => store.clearAll());
 }
 
-// ---- What ESPN tabs may show -------------------------------------------------------
+// ---- what ESPN tabs may show -------------------------------------------------------
 
 async function currentView() {
   if (!state.enabled || !state.game) return { status: 'off' };
@@ -158,7 +157,7 @@ function viewKey(view) {
   return `${view.status}:${seconds}:${view.error || ''}`;
 }
 
-// Plays go out only alongside the snapshot they belong to, never ahead of it.
+// plays go out only with the snapshot they belong to, never ahead of it
 function withPlays(view) {
   if (view.status !== 'ready') return view;
   const list = playsAt([...plays.values()], view.snapshot.capturedAt).map((p) => ({
@@ -242,14 +241,13 @@ async function unregisterScripts() {
   if (ids.length) await chrome.scripting.unregisterContentScripts({ ids });
 }
 
-// Reloading lets the shield load before anything renders, including in tabs that
-// were already open.
+// reload so the shield loads before anything renders, even in tabs already open
 async function reloadEspnTabs() {
   const tabs = await chrome.tabs.query({ url: ESPN_PAGES });
   await Promise.all(tabs.map((t) => chrome.tabs.reload(t.id).catch(() => {})));
 }
 
-// ---- Popup requests ----------------------------------------------------------------
+// ---- popup requests ----------------------------------------------------------------
 
 async function popupStatus() {
   const view = await currentView();
@@ -299,7 +297,7 @@ async function syncNow({ period, clock, tapAt }) {
   if (!Number.isFinite(clockSec)) {
     throw new SyncError('bad-input', 'Enter the clock as shown on your stream, like 7:42 or 45.2.');
   }
-  // Right after turning on, the first recording may still be in flight.
+  // right after turning on, the first recording may still be in flight
   if (!plays.size) await recordOnce(generation);
   const current = [...plays.values()].filter((p) => p.removedAt == null);
   const result = computeSync(current, { period: Number(period), clockSec }, Number(tapAt) + state.skewMs);

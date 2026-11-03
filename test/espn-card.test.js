@@ -1,4 +1,4 @@
-// Rewriting a copy of ESPN's own scoreboard card with synced data.
+// rewriting a copy of ESPN's own scoreboard card with synced data
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -11,7 +11,7 @@ const sources = ['../src/content/espn-copy.js', '../src/content/espn-card.js'].m
 const fixture = JSON.parse(read('./fixtures/game.json'));
 const GAME = { id: '900000001' };
 
-// The synced game in the 3rd quarter: plays up to a 3rd-quarter shot.
+// the synced game in the 3rd quarter, with plays up to a 3rd-quarter shot
 function midGame() {
   const cut = fixture.plays.findIndex((p) => p.period.number === 3 && p.scoringPlay);
   const json = structuredClone(fixture);
@@ -25,7 +25,7 @@ function midGame() {
   return { snapshot: { capturedAt: 1, ...trimSnapshot(json, plays) }, plays };
 }
 
-// ESPN's card is built from the synced teams; `copyWith` swaps in different synced data.
+// ESPN's card is built from the synced teams, `copyWith` swaps in different synced data
 function build(markup, { snapshot, plays }, copyWith = snapshot) {
   const away = snapshot.teams.find((t) => t.homeAway === 'away');
   const home = snapshot.teams.find((t) => t.homeAway === 'home');
@@ -59,14 +59,14 @@ test('live card, synced to the 3rd quarter: everything on it is synced', () => {
     assert.equal(row.querySelector('img').getAttribute('src'), team.logo);
   }
 
-  // Last play: the synced latest play, with its team.
+  // last play is the synced latest play, with its team
   const last = synced.plays.at(-1);
   const lastTeam = synced.snapshot.teams.find((t) => t.id === last.teamId);
   assert.equal(copy.querySelector('.LastPlay h1').textContent, `Last Play ${last.clock} - 3rd`);
   assert.equal(copy.querySelector('.LastPlay span span').textContent, `${lastTeam.abbrev} - ${last.text}`);
   assert.match(copy.querySelector('.LastPlay img').getAttribute('src'), new RegExp(`/players/full/${last.athleteId}\\.png$`));
 
-  // Top performers: each team's synced leading scorer.
+  // top performers are each team's synced leading scorer
   const performers = [...copy.querySelectorAll('.ContentList__Item')];
   assert.equal(performers.length, 2);
   for (const [item, team] of [[performers[0], away], [performers[1], home]]) {
@@ -117,7 +117,7 @@ test('top performer line: points, then up to two standout stats in ESPN’s orde
   const { built } = build({ state: 'in' }, synced);
   const item = built.copy.querySelectorAll('.ContentList__Item')[0];
   const line = [...item.querySelectorAll('.Athlete__Stats > *')].map((d) => `${d.querySelector('.Athlete__Stats--value').textContent} ${d.querySelector('.Athlete__Stats--label').textContent}`);
-  // 5 REB is below the cut-off; of AST, STL and BLK the two that stand out most are kept.
+  // 5 REB is below the cut-off, and of AST, STL and BLK the two that stand out most are kept
   assert.deepEqual(line, ['31 PTS', '9 AST', '4 BLK']);
 });
 

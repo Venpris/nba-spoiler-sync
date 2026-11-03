@@ -1,6 +1,6 @@
-// Builds box score markup shaped like ESPN's (structure and class names as of October
-// 2026) from a summary-format game, with every stat set to a stand-in live value. Used to
-// test rewriting ESPN's own box score without keeping any of ESPN's pages in the repo.
+// box score markup with ESPN's structure and class names (as of October 2026), built
+// from a summary-format game with every stat set to a stand-in live value
+// lets tests rewrite ESPN's box score without keeping ESPN's pages in the repo
 export function espnBoxHtml(summary, { live = '99', dnpIds = [] } = {}) {
   const block = (teamPlayers) => {
     const s = teamPlayers.statistics[0];

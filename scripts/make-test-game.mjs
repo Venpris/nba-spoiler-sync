@@ -1,8 +1,7 @@
-// Builds test/fixtures/game.json: a made-up game (teams, players, play text, box score)
-// in the shape of ESPN's summary feed, driven by the real play timing in
-// test/fixtures/timing.json so the sync tests still see real-world logging patterns.
-// Deterministic: the same timing file always produces the same game.
-// Run with: npm run fixtures
+// builds test/fixtures/game.json, a made-up game shaped like ESPN's summary feed but with
+// the real play timing from test/fixtures/timing.json, so sync tests still see real-world
+// logging patterns (the same timing file always produces the same game)
+// run with: npm run fixtures
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,7 +11,7 @@ const timing = JSON.parse(readFileSync(join(fixtures, 'timing.json'), 'utf8')).p
 
 const GAME_ID = '900000001';
 
-// Small seeded random number generator (mulberry32).
+// small seeded random number generator (mulberry32)
 let seed = 20260115;
 function random() {
   seed = (seed + 0x6d2b79f5) | 0;
@@ -57,7 +56,7 @@ function makePlayer(side, i) {
 const roster = { away: [], home: [] };
 for (const side of ['away', 'home']) for (let i = 0; i < 13; i++) roster[side].push(makePlayer(side, i));
 
-// A player who's playing, picked roughly in proportion to minutes.
+// a random active player, weighted roughly by minutes
 function player(side, not) {
   const pool = roster[side].filter((p) => p.weight && p !== not);
   let r = random() * pool.reduce((sum, p) => sum + p.weight, 0);
@@ -206,7 +205,7 @@ const plays = timing.map((t, i) => {
   }
   if (score.home !== score.away) playsLeading[score.home > score.away ? 'home' : 'away']++;
 
-  // ESPN's short label for the play, as on its Gamecast play cards.
+  // ESPN's short label for the play, as on its Gamecast play cards
   const shortDescription = {
     shot: t.points ? `+${t.points} Points` : t.attempt === 3 ? 'Missed 3PT' : 'Missed FG',
     ft: t.points ? '+1 Point' : 'Missed FT',
@@ -305,7 +304,7 @@ const game = {
       {
         id: GAME_ID,
         date: timing[0].wallclock,
-        // ESPN lists the home team first.
+        // ESPN lists the home team first
         competitors: ['home', 'away'].map((side) => ({
           id: TEAMS[side].id,
           homeAway: side,
@@ -348,7 +347,7 @@ const game = {
     }),
   },
   plays,
-  // Parts of ESPN's feed the extension must never pass on.
+  // parts of ESPN's feed the extension must never pass on
   winprobability: [{ playId: plays.at(-1).id, homeWinPercentage: 1 }],
   news: { articles: [{ headline: `${TEAMS.home.name} hold off ${TEAMS.away.name}` }] },
 };

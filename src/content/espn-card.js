@@ -1,14 +1,13 @@
-// Keeps ESPN's own scoreboard card for the synced game: rewrites a copy of it with the
-// synced score, clock, quarter scores, records, last play and top performers. Any other
-// text is cleared. A finished game's card shows a recap video where the last play goes,
-// and marks the winner; the last play is always rebuilt and the winner mark hidden.
-// Runs as a content script (exposes globalThis.NSSEspnCard) and is imported by the tests.
+// copies ESPN's scoreboard card for the synced game, rewriting its score, clock, quarter
+// scores, records, last play and top performers and clearing any other text
+// always rebuilds the last play (a recap video after the game) and hides the winner mark
+// content script exposing globalThis.NSSEspnCard, also imported by the tests
 (function () {
   const { prepare, writer, setImage } = globalThis.NSSCopy;
   const TEAM_HREF = /\/team\/_\/name\/([a-z0-9]+)/i;
   const BUTTONS = new Set(['Gamecast', 'Box Score', 'Play-by-Play', 'Highlights']);
-  // A top performer's line: points, then up to two other standout stats.
-  // (Cut-offs picked to match ESPN's choices on real cards.)
+  // a top performer's line shows points, then up to two other standout stats
+  // (cut-offs picked to match ESPN's choices on real cards)
   const STANDOUT = { REB: 6, AST: 5, STL: 2, BLK: 2 };
 
   const headshot = (athleteId) => `https://a.espncdn.com/i/headshots/nba/players/full/${athleteId}.png`;
@@ -39,8 +38,7 @@
     return status.detail || '';
   }
 
-  // Make a row of cells exactly `count` long (cloning the last cell or removing extras),
-  // then fill each one.
+  // grow or shrink a row to exactly `count` cells (cloning the last one), then fill each
   function fitCells(cells, count, fill) {
     const list = [...cells];
     if (!list.length) return;
@@ -72,7 +70,7 @@
     return { player, stats: [{ label: 'PTS', value: value(player, 'PTS') }, ...extras] };
   }
 
-  // ESPN's "Last Play" block, built with ESPN's own classes from the synced latest play.
+  // ESPN's "Last Play" block, built with ESPN's own classes from the latest synced play
   function lastPlay(doc, snapshot, plays, w) {
     const play = [...(plays || [])].sort((a, b) => b.seq - a.seq)[0];
     if (!play) return null;
@@ -141,7 +139,7 @@
     const status = snapshot.status || {};
     const state = ['pre', 'post'].includes(status.state) ? status.state : 'in';
 
-    // The card's state and clock, styled the way ESPN styles that state.
+    // the card's state and clock, styled as ESPN styles that state
     cell.className = /ScoreboardScoreCell--\w+/.test(cell.className)
       ? cell.className.replace(/ScoreboardScoreCell--\w+/, `ScoreboardScoreCell--${state}`)
       : `${cell.className} ScoreboardScoreCell--${state}`;
@@ -154,8 +152,8 @@
       w.set(time, statusText(status));
     }
 
-    // Quarter columns: as many as the synced game has reached (at least four), so an
-    // overtime column can't appear early.
+    // as many quarter columns as the synced game has reached (at least four), so an
+    // overtime column can't appear early
     const periods = Math.max(4, ...sides.map((s) => s.team.linescores?.length || 0));
     fitCells(copy.querySelectorAll('.ScoreboardScoreCell__Heading:not(.ScoreboardScoreCell__Heading--total)'), periods, (el, i) => w.set(el, columnLabel(i + 1)));
 
@@ -170,11 +168,11 @@
       w.set(li.querySelector('.ScoreCell__Score'), team.score ?? '');
     }
 
-    // Last play, rebuilt every time (a finished game has a recap video here instead).
+    // last play, always rebuilt since a finished game has a recap video here instead
     const lastColumn = copy.querySelector('.Scoreboard__Column--2 .column-content') || copy.querySelector('.Scoreboard__Column--2');
     if (lastColumn) lastColumn.replaceChildren(...[lastPlay(doc, snapshot, plays, w)].filter(Boolean));
 
-    // Top performers: the synced leading scorer for each team.
+    // top performers, each team's synced leading scorer
     const performers = [...copy.querySelectorAll('.Scoreboard__Performers .ContentList__Item')];
     if (performers.length) {
       const template = performers[0];
@@ -182,10 +180,10 @@
       template.parentElement.replaceChildren(...tops.map(({ team, top }) => fillPerformer(template.cloneNode(true), team, top, w)));
     }
 
-    // Buttons: only links to the game's pages and highlights.
+    // only keep buttons linking to the game's pages and highlights
     for (const a of copy.querySelectorAll('.Scoreboard__Callouts a')) if (!BUTTONS.has(a.textContent.trim())) a.style.display = 'none';
 
-    // Anything else is cleared; team names, "Home"/"Away", headings and buttons stay.
+    // clear anything else, keeping team names, "Home"/"Away", headings and buttons
     const keep = '.ScoreCell__TeamName, .ScoreboardScoreCell__Record--homeAway, .ScoreboardScoreCell__Headings, .Scoreboard__Callouts, .Scoreboard__Column--3 h4';
     return { teams: 2, cleared: w.clearRest(copy, keep, { allText: true }) };
   }

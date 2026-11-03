@@ -1,7 +1,6 @@
-// Runs the real service worker against a simulated live game: ESPN's feed is replayed
-// from a finished game's play log by timestamp, on a mocked clock, while a viewer
-// watches 75 seconds behind. Checks what ESPN tabs receive never runs ahead of them.
-// The game is made up, with play timing from a real one (scripts/make-test-game.mjs).
+// runs the real service worker on a mocked clock against a live feed replayed from a
+// finished game's play log, checking ESPN tabs never get ahead of a viewer 75s behind
+// the game is made up, with play timing from a real one (scripts/make-test-game.mjs)
 import 'fake-indexeddb/auto';
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,9 +13,9 @@ const firstPlay = Math.min(...wallclock.values());
 const STREAM_DELAY_MS = 75_000;
 const START = firstPlay + 20 * 60_000; // ESPN is live in the 2nd quarter
 
-// ESPN's feed at time t: plays logged so far. The box score can't be replayed, so the
-// away "score" carries how many plays the feed had, which lets the test check that a
-// snapshot never contains more than the viewer has seen.
+// ESPN's feed at time t, with the plays logged so far
+// the box score can't be replayed, so the away "score" carries the play count, letting
+// the test check a snapshot never holds more than the viewer has seen
 function feedAt(t) {
   const plays = fixture.plays.filter((p) => Date.parse(p.wallclock) <= t);
   const header = structuredClone(fixture.header);
@@ -57,7 +56,7 @@ function fakeChrome() {
   };
 }
 
-// Let promise chains, fake IndexedDB (setImmediate-based) and fetch callbacks run.
+// let promise chains, fake IndexedDB (setImmediate-based) and fetch callbacks run
 async function settle() {
   for (let i = 0; i < 50; i++) await new Promise((r) => setImmediate(r));
 }
@@ -98,7 +97,7 @@ test('recording, syncing and what ESPN tabs receive', async () => {
   assert.deepEqual(chrome.registered.map((s) => s.id).sort(), ['nss-nav-hook', 'nss-shield']);
   assert.equal(chrome.reloads, 1);
 
-  // An ESPN tab connects and records everything it is sent.
+  // an ESPN tab connects and records everything it's sent
   const received = [];
   const port = {
     name: 'espn-tab',
@@ -110,7 +109,7 @@ test('recording, syncing and what ESPN tabs receive', async () => {
   assert.deepEqual(received[0].msg, { type: 'config', game });
   assert.equal(received[1].msg.view.status, 'unsynced');
 
-  // Record for a bit, then sync the moment the stream reaches a play's clock.
+  // record for a bit, then sync the moment the stream reaches a play's clock
   await advance(20_000);
   const streamAt = () => Date.now() - STREAM_DELAY_MS;
   const target = fixture.plays.find((p) => Date.parse(p.wallclock) > streamAt() + 5_000 && p.type.text !== 'Substitution');
@@ -119,18 +118,18 @@ test('recording, syncing and what ESPN tabs receive', async () => {
 
   status = await ask({ type: 'sync', period: target.period.number, clock: target.clock.displayValue, tapAt: Date.now() });
   assert.ok(status.ok, status.error);
-  // The estimate may run long (a stoppage before the synced moment), never meaningfully short.
+  // the estimate may run long (a stoppage before the synced moment) but never meaningfully short
   assert.ok(status.sync.delayMs >= STREAM_DELAY_MS - 5_000, `delay ${status.sync.delayMs}`);
   assert.ok(status.sync.delayMs <= STREAM_DELAY_MS + 60_000, `delay ${status.sync.delayMs}`);
   assert.equal(status.status, 'loading'); // the recording hasn't reached the stream yet
 
-  // Watch for 10 minutes of game.
+  // watch 10 minutes of game
   await advance(10 * 60_000);
   const views = received.filter((r) => r.msg.type === 'view').map((r) => ({ at: r.at, view: r.msg.view }));
   const ready = views.filter((v) => v.view.status === 'ready');
   assert.ok(ready.length > 20, `${ready.length} ready views`);
-  // Recording started at START; it's ready once it has covered the delay plus the 10s margin
-  // (give or take a poll and a tick).
+  // ready once recording since START covers the delay plus the 10s margin
+  // (give or take a poll and a tick)
   const firstReady = ready[0].at;
   assert.ok(firstReady - START <= status.sync.delayMs + 10_000 + 6_000, `ready after ${firstReady - START}ms`);
 
@@ -143,18 +142,18 @@ test('recording, syncing and what ESPN tabs receive', async () => {
     assert.ok(!('wallclockMs' in view.plays[0]));
   }
 
-  // It also keeps up: the newest view lags the viewer by roughly the safety margin, not more.
+  // it also keeps up, the newest view lagging the viewer by roughly the safety margin and no more
   const last = ready.at(-1);
   const lastSeen = fixture.plays.filter((p) => Date.parse(p.wallclock) <= last.at - STREAM_DELAY_MS).length;
   const lagPlays = lastSeen - Number(last.view.snapshot.teams.find((t) => t.homeAway === 'away').score);
   assert.ok(lagPlays <= 8, `${lagPlays} plays behind`);
 
-  // The popup never gets game data.
+  // the popup never gets game data
   status = await ask({ type: 'getStatus' });
   assert.equal(status.status, 'ready');
   assert.ok(!JSON.stringify(status).includes('"teams"'));
 
-  // Turning off unregisters the shield and reloads ESPN tabs.
+  // turning off unregisters the shield and reloads ESPN tabs
   status = await ask({ type: 'setEnabled', enabled: false });
   assert.equal(status.status, 'off');
   assert.equal(chrome.registered.length, 0);

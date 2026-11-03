@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { computeSync, SyncError } from '../src/lib/sync.js';
 import { trimPlays } from '../src/lib/espn.js';
 
-// A made-up game whose play timing comes from a real one (see scripts/make-test-game.mjs).
+// a made-up game with play timing from a real one (see scripts/make-test-game.mjs)
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/game.json', import.meta.url), 'utf8'));
 const plays = trimPlays(fixture);
 const MARGIN_MS = 10_000;
@@ -15,8 +15,8 @@ test('on a real game, a sync never puts the user ahead of the play they are watc
   let maxAheadMs = -Infinity;
   for (const x of plays) {
     if (x.type === 'End Period' || x.type === 'End Game') continue;
-    // The user taps as their stream shows X's clock. ESPN's feed at that moment has
-    // everything logged up to now, i.e. 95s of plays past X.
+    // the user taps as their stream shows X's clock, when ESPN's feed already has
+    // 95s of plays past X
     const tapServerMs = x.wallclockMs + STREAM_DELAY_MS;
     const feed = plays.filter((p) => p.wallclockMs <= tapServerMs);
     let result;
@@ -28,7 +28,7 @@ test('on a real game, a sync never puts the user ahead of the play they are watc
     }
     checked++;
     maxAheadMs = Math.max(maxAheadMs, result.userServerMs - x.wallclockMs);
-    // With the safety margin, the moment shown must still be before X was logged.
+    // with the safety margin, the moment shown must still be before X was logged
     const shownUpTo = tapServerMs - result.delayMs - MARGIN_MS;
     assert.ok(shownUpTo < x.wallclockMs, `play ${x.id} (${x.period}Q ${x.clock}) would be shown early`);
   }
@@ -54,7 +54,7 @@ test('plays at exactly the entered clock count as unseen', () => {
   const t = 1_000_000;
   const feed = [
     { period: 1, clockSec: 300, wallclockMs: t },
-    // Logged at the entered clock, after a 30s stoppage. The user may not have seen it.
+    // logged at the entered clock after a 30s stoppage, so the user may not have seen it
     { period: 1, clockSec: 290, wallclockMs: t + 40_000 },
   ];
   const { userServerMs } = computeSync(feed, { period: 1, clockSec: 290 }, t + 60_000);

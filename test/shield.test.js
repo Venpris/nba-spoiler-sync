@@ -1,4 +1,4 @@
-﻿// Runs the real content scripts against skeletons of ESPN's game page in jsdom.
+﻿// runs the real content scripts against skeletons of ESPN's game page in jsdom
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -33,8 +33,8 @@ const BOX_URL = 'https://www.espn.com/nba/boxscore/_/gameId/900000001';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const MOUNT_WAIT = 1200;
 
-// The rules in shield.css that hide things, and a check of whether an element ends up
-// hidden by them (or by an inline display: none, standing in for ESPN's own CSS).
+// the hiding rules in shield.css, and a check for whether an element ends up hidden by
+// them (or by an inline display: none, standing in for ESPN's own CSS)
 const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^}]*)\}/g)]
   .filter((m) => /display:\s*none|visibility:\s*hidden/.test(m[2]))
   .map((m) => m[1].trim());
@@ -60,7 +60,7 @@ function load(html, url) {
       }),
     },
   };
-  // jsdom has no layout; answer Chrome's checkVisibility() from the hiding rules.
+  // jsdom has no layout, so answer Chrome's checkVisibility() from the hiding rules
   window.Element.prototype.checkVisibility = function () {
     return !hiddenCheck(window.document)(this);
   };
@@ -73,7 +73,7 @@ function load(html, url) {
     attrs: () => [...doc.documentElement.attributes].map((a) => a.name).filter((n) => n.startsWith('data-nss')).sort(),
     matches: (selector) => [...doc.querySelectorAll(selector)],
     isHidden: (el) => hiddenCheck(doc)(el),
-    // Elements standing in for live data (their text says LIVE).
+    // elements standing in for live data (their text says LIVE)
     live: () => [...doc.querySelectorAll('body *')].filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.includes('LIVE'))),
   };
 }
@@ -83,7 +83,7 @@ for (const [layout, html] of Object.entries(layouts)) {
     const page = load(html, BOX_URL);
     const { doc } = page;
 
-    // Before the background answers, the whole page is blank and the ticker hidden.
+    // before the background answers, the page is blank and the ticker hidden
     assert.deepEqual(page.attrs(), ['data-nss-gamepage', 'data-nss-on']);
     assert.ok(page.isHidden(doc.body));
 
@@ -99,7 +99,7 @@ for (const [layout, html] of Object.entries(layouts)) {
     assert.equal(offset.firstElementChild.id, 'nss-strip');
     assert.ok(doc.getElementById('nss-root').previousElementSibling.matches('.NavSecondary--GamePackage'));
 
-    // Every live element is hidden; our panel, ESPN's game tabs and site header are not.
+    // every live element is hidden, but not our panel, ESPN's game tabs or the site header
     const live = page.live();
     assert.ok(live.length >= 4);
     for (const el of live) assert.ok(page.isHidden(el), `visible: ${el.className || el.tagName} "${el.textContent.trim()}"`);
@@ -107,13 +107,13 @@ for (const [layout, html] of Object.entries(layouts)) {
       assert.ok(!page.isHidden(doc.querySelector(sel)), `${sel} is hidden`);
     }
 
-    // Our panel shows the synced box score; the tab title is ours.
+    // our panel shows the synced box score and the tab title is ours
     const root = doc.getElementById('nss-root');
     assert.ok(root.textContent.includes('Starters'));
     assert.ok(doc.getElementById('nss-strip').textContent.includes('synced to your stream'));
     assert.equal(doc.title, 'HAR @ MES · Spoiler Sync');
 
-    // ESPN re-rendering over the panel, or retitling the tab, gets undone.
+    // ESPN re-rendering over the panel, or retitling the tab, gets undone
     root.remove();
     doc.title = 'Herons 101-99 Coyotes';
     await wait(10);
@@ -121,13 +121,13 @@ for (const [layout, html] of Object.entries(layouts)) {
     assert.ok(!page.isHidden(doc.getElementById('nss-root')));
     assert.equal(doc.title, 'HAR @ MES · Spoiler Sync');
 
-    // In-page navigation: leaving the game removes our panel...
+    // in-page navigation away from the game removes our panel
     page.window.history.pushState({}, '', '/nba/scoreboard');
     assert.ok(!page.attrs().includes('data-nss-here'));
     assert.equal(doc.getElementById('nss-root'), null);
     assert.equal(doc.querySelectorAll('[data-nss-keep]').length, 0);
 
-    // ...and coming back to another tab of it shows that tab's synced view.
+    // and coming back to another of its tabs shows that tab's synced view
     page.window.history.pushState({}, '', '/nba/playbyplay/_/gameId/900000001');
     assert.ok(page.attrs().includes('data-nss-here'));
     assert.ok(doc.getElementById('nss-root').textContent.includes('4th Quarter'));
@@ -139,7 +139,7 @@ for (const [layout, html] of Object.entries(layouts)) {
     assert.ok(page.isHidden(page.doc.body));
     page.send({ type: 'config', game: GAME });
     assert.deepEqual(page.attrs(), ['data-nss-gamepage', 'data-nss-on', 'data-nss-ready']);
-    // The other game shows normally; only the ticker stays hidden.
+    // the other game shows normally, only the ticker stays hidden
     const visible = page.live().filter((el) => !page.isHidden(el)).map((el) => el.textContent.trim());
     assert.ok(visible.includes('LIVE score strip') && visible.includes('LIVE box score'), visible.join(', '));
     assert.ok(!visible.includes('LIVE ticker'));
@@ -157,8 +157,7 @@ test('Box Score page: ESPN’s own box score, rewritten with synced stats', asyn
   const stripCopy = () => doc.querySelector('[data-nss-copy="strip"]');
   const original = () => [...doc.querySelectorAll('.Boxscore__ResponsiveWrapper')].find((el) => !el.closest('[data-nss-copy]')).closest('section');
   const originalStrip = () => [...doc.querySelectorAll('.Gamestrip__StickyContainer')].find((el) => !el.closest('[data-nss-copy]'));
-  // ESPN's live numbers (99 in this markup) must never be visible. (Our own panel and
-  // copies show synced numbers, which can be anything.)
+  // ESPN's live numbers (99 in this markup) must never show outside our own panel and copies
   const visible99 = () => {
     const isHidden = hiddenCheck(doc);
     return [...doc.querySelectorAll('body *')].filter(
@@ -169,7 +168,7 @@ test('Box Score page: ESPN’s own box score, rewritten with synced stats', asyn
   page.send({ type: 'config', game: GAME });
   await wait(MOUNT_WAIT);
 
-  // Not synced yet: our strip and panel explain, ESPN's strip and box score stay hidden.
+  // before syncing, our strip and panel explain while ESPN's strip and box score stay hidden
   page.send({ type: 'view', view: { status: 'loading', readyInMs: 30_000 } });
   assert.equal(copy(), null);
   assert.equal(stripCopy(), null);
@@ -177,8 +176,8 @@ test('Box Score page: ESPN’s own box score, rewritten with synced stats', asyn
   assert.match(doc.getElementById('nss-root').textContent, /Hidden by Spoiler Sync/);
   assert.equal(visible99().length, 0);
 
-  // Synced: the copies sit where ESPN's strip and box score were; ESPN's originals and
-  // our own strip and panel are hidden.
+  // once synced, the copies sit where ESPN's strip and box score were, and ESPN's
+  // originals and our own strip and panel are hidden
   page.send({ type: 'view', view: readyView });
   assert.ok(copy() && !page.isHidden(copy()));
   assert.equal(original().nextElementSibling, copy());
@@ -194,14 +193,14 @@ test('Box Score page: ESPN’s own box score, rewritten with synced stats', asyn
   const firstPlayer = readyView.snapshot.box[0].players.find((p) => p.stats.length);
   assert.ok(copy().textContent.includes(firstPlayer.stats[2]));
 
-  // A newer synced moment rebuilds the copy with the new numbers.
+  // a newer synced moment rebuilds the copy with the new numbers
   const later = structuredClone(readyView);
   later.snapshot.capturedAt = 2;
   later.snapshot.box[0].players.find((p) => p.id === firstPlayer.id).stats[1] = '42';
   page.send({ type: 'view', view: later });
   assert.ok(copy().textContent.includes('42'));
 
-  // ESPN re-rendering its box score: the copy is rebuilt next to the new original.
+  // if ESPN re-renders its box score, the copy is rebuilt next to the new original
   const replacement = original().cloneNode(true);
   original().replaceWith(replacement);
   await wait(10);
@@ -209,8 +208,8 @@ test('Box Score page: ESPN’s own box score, rewritten with synced stats', asyn
   assert.equal(doc.querySelectorAll('[data-nss-copy="box"]').length, 1);
   assert.equal(visible99().length, 0);
 
-  // Leaving the Box Score tab for Play-by-Play: box score copy gone, panel back; ESPN's
-  // strip stays (synced) on every game page.
+  // leaving the Box Score tab for Play-by-Play drops the box score copy and brings the panel back
+  // ESPN's strip stays (synced) on every game page
   page.window.history.pushState({}, '', '/nba/playbyplay/_/gameId/900000001');
   assert.equal(copy(), null);
   assert.ok(stripCopy() && !page.isHidden(stripCopy()));
@@ -227,12 +226,12 @@ test('Gamecast page: ESPN’s text widgets, synced; everything else hidden', asy
   page.send({ type: 'config', game: GAME });
   await wait(MOUNT_WAIT);
 
-  // Before syncing: our panel explains; none of ESPN's widgets show.
+  // before syncing, our panel explains and none of ESPN's widgets show
   page.send({ type: 'view', view: { status: 'loading', readyInMs: 5_000 } });
   assert.equal(doc.querySelectorAll('[data-nss-copy]').length, 0);
   for (const el of page.live()) assert.ok(page.isHidden(el), `visible: "${el.textContent.trim()}"`);
 
-  // Synced: a copy of each text widget, right after its hidden original.
+  // once synced, each text widget gets a copy right after its hidden original
   page.send({ type: 'view', view: readyView });
   for (const name of ['lastPlays', 'leaders', 'teamStats', 'gameInfo']) {
     const copy = doc.querySelector(`[data-nss-copy="${name}"]`);
@@ -240,7 +239,7 @@ test('Gamecast page: ESPN’s text widgets, synced; everything else hidden', asy
     assert.ok(page.isHidden(copy.previousElementSibling), `${name} original hidden`);
   }
   assert.ok(doc.querySelector('[data-nss-copy="lastPlays"] p').textContent.length > 0);
-  // Win probability, lineups, highlights, odds and standings stay hidden, as does our panel.
+  // win probability, lineups, highlights, odds and standings stay hidden, as does our panel
   for (const el of page.live()) assert.ok(page.isHidden(el), `visible: "${el.textContent.trim()}"`);
   assert.ok(page.isHidden(doc.getElementById('nss-root')));
 });
@@ -286,7 +285,7 @@ test('Team Stats page: ESPN’s table and side widgets, synced; the rest hidden'
     const copy = doc.querySelector(`[data-nss-copy="${name}"]`);
     assert.ok(copy && !page.isHidden(copy), `${name} shown`);
   }
-  // ESPN's live values (99) are visible nowhere outside our copies.
+  // ESPN's live values (99) show nowhere outside our copies
   const isHidden = (el) => page.isHidden(el);
   const live99 = [...doc.querySelectorAll('body *')].filter((el) => !el.children.length && /99/.test(el.textContent) && !el.closest('[data-nss-copy], #nss-root, #nss-strip') && !isHidden(el));
   assert.deepEqual(live99.map((el) => el.textContent), []);
@@ -295,7 +294,7 @@ test('Team Stats page: ESPN’s table and side widgets, synced; the rest hidden'
 });
 
 test('if ESPN hides the spot the panel was put in, it shows on its own instead', async () => {
-  // Stand-in for ESPN CSS hiding the area below the tabs.
+  // stand-in for ESPN CSS hiding the area below the tabs
   const html = layouts['October 2026'].replace('<section class="Gamestrip__ContentOffset">', '<section class="Gamestrip__ContentOffset" style="display: none">');
   const page = load(html, BOX_URL);
   page.send({ type: 'config', game: GAME });
@@ -316,18 +315,18 @@ test('scoreboard: the synced game gets our card with the synced score and links'
   </body></html>`;
   const page = load(html, 'https://www.espn.com/nba/scoreboard');
   const { doc } = page;
-  // Every card is hidden until the synced game is known...
+  // every card is hidden until the synced game is known
   assert.equal(page.matches(rule('section.Scoreboard')).length, 2);
   page.send({ type: 'config', game: GAME });
   assert.equal(page.matches(rule('section.Scoreboard')).length, 0);
 
-  // ...then only the synced game's ESPN content stays hidden.
+  // then only the synced game's ESPN content stays hidden
   const style = doc.getElementById('nss-dynamic').textContent;
   const espnRule = /([^{}]+> :not\(#nss-scorecard\))\s*\{/.exec(style)[1].trim();
   const hiddenNow = () => page.matches(espnRule);
   assert.deepEqual(hiddenNow().map((el) => el.className), ['Scoreboard__RowContainer', 'Scoreboard__Callouts']);
 
-  // Our card goes on top once the page has settled, and says what's going on.
+  // our card goes on top once the page has settled, and says what's going on
   await wait(MOUNT_WAIT);
   const card = () => doc.getElementById('nss-scorecard');
   assert.equal(card().parentElement.id, '900000001');
@@ -336,7 +335,7 @@ test('scoreboard: the synced game gets our card with the synced score and links'
   assert.match(card().textContent, /Sync to your stream/);
   assert.ok(card().querySelector('a[href="/nba/boxscore/_/gameId/900000001"]'));
 
-  // Ready: synced score, status and links to the game's pages.
+  // once ready, it shows the synced score, status and links to the game's pages
   page.send({ type: 'view', view: readyView });
   const away = readyView.snapshot.teams.find((t) => t.homeAway === 'away');
   assert.ok(card().textContent.includes(away.score));
@@ -346,7 +345,7 @@ test('scoreboard: the synced game gets our card with the synced score and links'
     ['/nba/game/_/gameId/900000001', '/nba/boxscore/_/gameId/900000001', '/nba/playbyplay/_/gameId/900000001'],
   );
 
-  // ESPN re-rendering the card puts ours back.
+  // ESPN re-rendering the card puts ours back
   card().remove();
   await wait(10);
   assert.equal(card()?.parentElement.id, '900000001');
@@ -366,22 +365,22 @@ test('scoreboard: once synced, ESPN’s own card shows the synced game', async (
   page.send({ type: 'config', game: GAME });
   await wait(MOUNT_WAIT);
 
-  // Before syncing: our own card covers ESPN's.
+  // before syncing, our own card covers ESPN's
   page.send({ type: 'view', view: { status: 'unsynced' } });
   assert.equal(copy(), null);
   assert.equal(doc.getElementById('nss-scorecard')?.parentElement, original);
 
-  // Synced: ESPN's card is hidden and a synced copy of it shown right after.
+  // once synced, ESPN's card is hidden with a synced copy right after it
   page.send({ type: 'view', view: readyView });
   assert.equal(original.nextElementSibling, copy());
   assert.ok(originalHidden());
   assert.equal(doc.getElementById('nss-scorecard'), null);
   assert.ok(copy().textContent.includes(pair.away.score) && copy().textContent.includes('Top Performers'));
   assert.ok(!/\b99\b/.test(copy().textContent));
-  // The other game's card is untouched.
+  // the other game's card is untouched
   assert.ok(doc.getElementById('900000002').textContent.includes('99'));
 
-  // ESPN re-rendering its list: the copy is put back.
+  // if ESPN re-renders its list, the copy is put back
   copy().remove();
   await wait(10);
   assert.equal(original.nextElementSibling, copy());

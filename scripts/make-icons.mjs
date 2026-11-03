@@ -1,5 +1,5 @@
-// Draws the toolbar icons (a basketball) as PNGs with no dependencies.
-// Run with: npm run icons
+// draws the toolbar icons as PNGs with no dependencies
+// run with: npm run icons
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
@@ -43,7 +43,7 @@ function png(size, rgba) {
   ]);
 }
 
-// Color at a point in unit coordinates, or null outside the ball.
+// color at a point in unit coordinates, or null outside the ball
 function sample(x, y, seamWidth) {
   const dx = x - 0.5;
   const dy = y - 0.5;
