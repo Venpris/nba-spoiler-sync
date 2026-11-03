@@ -69,6 +69,8 @@ test('Game Leaders: each team’s synced leader in points, rebounds and assists'
   );
   assert.ok(!visibleText(built.copy).some((t) => /99|L\. Player/.test(t)), visibleText(built.copy).join(' | '));
   assert.ok(visibleText(built.copy).includes('Game Leaders') && visibleText(built.copy).includes(away.abbrev));
+  // The team logos above the leaders are the real ones, not ESPN's lazy placeholders.
+  assert.deepEqual([...built.copy.querySelectorAll('a[href*="/team/"] img')].map((img) => img.getAttribute('src')), [away.logo, home.logo]);
 });
 
 test('Team Stats: synced values, labels and comparison bars', () => {

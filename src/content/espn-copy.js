@@ -43,5 +43,20 @@
   // Text directly inside an element, not counting its children.
   const ownText = (el) => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.nodeValue).join('').trim();
 
-  globalThis.NSSCopy = { prepare, writer, ownText };
+  // Point a <picture> or <img> (or the first one inside `container`) at src. ESPN loads its
+  // images lazily, only once they're on screen, so the hidden originals (and copies of
+  // them) are often still empty placeholders.
+  function setImage(container, src, alt) {
+    const target = container?.matches?.('picture, img') ? container : container?.querySelector('picture, img');
+    if (!target) return;
+    const isImg = target.tagName.toLowerCase() === 'img';
+    const img = isImg ? target : target.querySelector('img') || target.appendChild(target.ownerDocument.createElement('img'));
+    if (!isImg) for (const source of target.querySelectorAll('source')) source.remove();
+    for (const a of [...img.attributes]) if (a.name === 'srcset' || a.name === 'loading' || a.name.startsWith('data-')) img.removeAttribute(a.name);
+    if (src) img.setAttribute('src', src);
+    img.style.visibility = src ? '' : 'hidden';
+    img.setAttribute('alt', alt ?? '');
+  }
+
+  globalThis.NSSCopy = { prepare, writer, ownText, setImage };
 })();

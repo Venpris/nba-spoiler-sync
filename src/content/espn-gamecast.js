@@ -5,7 +5,7 @@
 // news) stay hidden.
 // Runs as a content script (exposes globalThis.NSSEspnGamecast) and is imported by tests.
 (function () {
-  const { prepare, writer, ownText } = globalThis.NSSCopy;
+  const { prepare, writer, ownText, setImage: setPicture } = globalThis.NSSCopy;
 
   const headshot = (athleteId) => `https://a.espncdn.com/i/headshots/nba/players/full/${athleteId}.png`;
   const slug = (name) =>
@@ -28,18 +28,6 @@
   function widgetTitled(doc, title) {
     const heading = [...doc.querySelectorAll('h2, h3')].find((h) => h.textContent.trim() === title && notCopy(h));
     return widgetOf(heading);
-  }
-
-  // A <picture> (or plain <img>) showing src instead of ESPN's lazily loaded image.
-  function setPicture(container, src, alt) {
-    const picture = container?.matches?.('picture, img') ? container : container?.querySelector('picture, img');
-    if (!picture) return;
-    const img = picture.tagName.toLowerCase() === 'img' ? picture : picture.querySelector('img') || picture.appendChild(picture.ownerDocument.createElement('img'));
-    for (const source of picture.querySelectorAll('source')) source.remove();
-    for (const a of [...img.attributes]) if (a.name === 'srcset' || a.name.startsWith('data-')) img.removeAttribute(a.name);
-    if (src) img.setAttribute('src', src);
-    img.style.visibility = src ? '' : 'hidden';
-    img.setAttribute('alt', alt ?? '');
   }
 
   function statOf(entry, player, label) {
@@ -128,6 +116,8 @@
       const w = writer();
       const teams = orderedTeams(snapshot);
       if (teams.some((t) => !t)) return null;
+      // The team logos above the leaders (away, then home).
+      teams.forEach((team, i) => setPicture(copy.querySelectorAll('a[href*="/team/"]')[i], team.logo, ''));
       let filled = 0;
       for (const section of copy.querySelectorAll('section')) {
         const header = section.querySelector(':scope > header');

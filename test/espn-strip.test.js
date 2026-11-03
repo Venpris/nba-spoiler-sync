@@ -57,6 +57,14 @@ test('live strip, synced to the 3rd quarter: score, clock, quarters and records 
   assert.deepEqual([...copy.querySelectorAll('.half.away .record')].map((r) => r.textContent), Array(2).fill(`${sAway.record.total}, ${sAway.record.venue} Away`));
   assert.deepEqual([...copy.querySelectorAll('.half.home .record')].map((r) => r.textContent), Array(2).fill(`${sHome.record.total}, ${sHome.record.venue} Home`));
 
+  // Team logos: ESPN's lazy placeholders replaced with the real logos, styling kept.
+  for (const [side, team] of [['away', away], ['home', home]]) {
+    const picture = copy.querySelector(`.half.${side} a.logo picture`);
+    assert.equal(picture.querySelector('source'), null);
+    assert.equal(picture.querySelector('img').getAttribute('src'), team.logo);
+    assert.equal(picture.querySelector('img').className, 'logo-img');
+  }
+
   // Live-only details are hidden; nothing of ESPN's live values is visible.
   for (const el of copy.querySelectorAll('.timeouts > div, .bonus')) assert.ok(isHidden(el));
   assert.ok(!visibleText(copy).some((t) => /99/.test(t)), visibleText(copy).join(' | '));

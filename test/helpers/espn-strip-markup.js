@@ -10,7 +10,7 @@ export function espnStripHtml({ away, home, state = 'in', periods = 4, live = '9
     `<div class="record ${color(side)}"><span>${live}-${live}</span><span class="venue">, <!-- -->${live}-${live} ${side === 'home' ? 'Home' : 'Away'}</span></div>`;
   const half = (t, side) => `
     <div class="half ${side}">
-      <div class="logo-wrap"><a class="logo" href="${href(t)}"><picture><img alt=""></picture></a>
+      <div class="logo-wrap"><a class="logo" href="${href(t)}"><picture><source srcset="data:image/gif;base64,R0lGOD"><img class="logo-img" alt="" loading="lazy" src="data:image/gif;base64,R0lGOD"></picture></a>
         <div class="names"><div><div><div><a class="name ${color(side)}" href="${href(t)}"><span>${t.name}</span><span>${t.shortName}</span><span>${t.abbrev}</span></a></div></div>${record(t, side)}</div></div>
       </div>
       <div class="score-wrap">

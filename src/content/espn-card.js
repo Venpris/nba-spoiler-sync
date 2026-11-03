@@ -4,7 +4,7 @@
 // and marks the winner; the last play is always rebuilt and the winner mark hidden.
 // Runs as a content script (exposes globalThis.NSSEspnCard) and is imported by the tests.
 (function () {
-  const { prepare, writer } = globalThis.NSSCopy;
+  const { prepare, writer, setImage } = globalThis.NSSCopy;
   const TEAM_HREF = /\/team\/_\/name\/([a-z0-9]+)/i;
   const BUTTONS = new Set(['Gamecast', 'Box Score', 'Play-by-Play', 'Highlights']);
   // A top performer's line: points, then up to two other standout stats.
@@ -51,18 +51,6 @@
       list.push(cell);
     }
     list.forEach(fill);
-  }
-
-  function setImage(img, src, alt) {
-    if (!img) return;
-    if (src) {
-      for (const a of [...img.attributes]) if (a.name === 'srcset' || a.name.startsWith('data-')) img.removeAttribute(a.name);
-      img.setAttribute('src', src);
-      img.style.visibility = '';
-    } else {
-      img.style.visibility = 'hidden';
-    }
-    img.setAttribute('alt', alt ?? '');
   }
 
   function topPerformer(entry) {

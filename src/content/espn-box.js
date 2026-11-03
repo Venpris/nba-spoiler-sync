@@ -3,7 +3,7 @@
 // so a row or column we can't match shows blank, never ESPN's live value.
 // Runs as a content script (exposes globalThis.NSSEspnBox) and is imported by the tests.
 (function () {
-  const { prepare, writer } = globalThis.NSSCopy;
+  const { prepare, writer, setImage } = globalThis.NSSCopy;
   const PLAYER_ID = /\/player\/_\/id\/(\d+)/;
 
   // The element to copy: ESPN's box score card (or the box score itself).
@@ -46,6 +46,7 @@
       const team = teamFor(block, snapshot);
       const entry = team && (snapshot.box || []).find((b) => b.teamId === team.id);
       if (entry) result.teamsMatched++;
+      if (team) setImage(block.querySelector('.BoxscoreItem__Title img'), team.logo, ''); // ESPN's loads lazily
       const labels = columnLabels(statsTable);
       const valueFor = (values, label) => {
         const k = entry ? entry.labels.indexOf(label) : -1;

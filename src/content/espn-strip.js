@@ -4,7 +4,7 @@
 // and on a finished game ESPN's winner styling is undone so it can't give the result away.
 // Runs as a content script (exposes globalThis.NSSEspnStrip) and is imported by the tests.
 (function () {
-  const { prepare, writer, ownText } = globalThis.NSSCopy;
+  const { prepare, writer, ownText, setImage } = globalThis.NSSCopy;
   const TEAM_HREF = /\/team\/_\/name\/([a-z0-9]+)/i;
 
   function findOriginal(doc) {
@@ -72,6 +72,8 @@
 
     for (const side of sides) {
       const { team } = side;
+      // ESPN's logo loads lazily, so the hidden original's is often still a placeholder.
+      setImage(teamLinks(side.el).find(hasLogo), team.logo, '');
       w.set(scoreElement(side.el), team.score ?? '');
       for (const rec of recordElements(side.el)) {
         const [total, venue] = rec.children;
