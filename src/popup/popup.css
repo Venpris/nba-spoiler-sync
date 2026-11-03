@@ -226,6 +226,28 @@ button:disabled { opacity: 0.6; cursor: default; }
   font-weight: 600;
 }
 
+/* ---- Links to the game's ESPN pages ---- */
+
+.links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.links__label { flex-basis: 100%; padding: 0 2px; color: var(--ink-soft); font-size: 12px; }
+.links a {
+  padding: 5px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.links a:hover { border-color: var(--teal); }
+.links a:focus-visible {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 30%, transparent);
+}
+
 /* ---- Footer ---- */
 
 .options {

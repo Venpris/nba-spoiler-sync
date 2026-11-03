@@ -28,8 +28,9 @@ After editing the code, click the reload arrow on the extension's card in `chrom
    This is most accurate while the clock is running.
 4. The status says **Getting ready** with a countdown. The recording has to reach your point
    in the game, so the wait is about as long as your stream's delay.
-5. When it says **Ready**, open the game on ESPN (Gamecast, Box Score, Play-by-Play or Team
-   Stats). The score strip and stats there match your stream, a few seconds behind.
+5. When it says **Ready**, open the game on ESPN with the links in the popup or on ESPN's
+   scoreboard (Gamecast, Box Score, Play-by-Play; Team Stats is a tab there). The score strip
+   and stats match your stream, a few seconds behind.
 
 If you pause, rewind, or your stream buffers, sync again. A stream that falls further
 behind than it was when you synced is the one way ESPN could get ahead of you.
@@ -44,7 +45,9 @@ true moment, so 10s leaves room. Raise it if you'd rather be extra safe.
   and everything below the tabs are replaced with the synced version. Other pages for the
   game, like the recap, are hidden.
 - **The scores ticker** across the top of ESPN is hidden on every page.
-- **The NBA scoreboard page**: this game's card is covered. Other games are untouched.
+- **The NBA scoreboard page**: this game's card is replaced with the synced score and links
+  to its Gamecast, Box Score and Play-by-Play pages (until you've synced, just the links).
+  Other games are untouched.
 - **The tab title** for the game's pages is replaced, so the tab strip can't give anything away.
 
 Turning it off reloads ESPN tabs back to normal. Closing the browser turns it off.

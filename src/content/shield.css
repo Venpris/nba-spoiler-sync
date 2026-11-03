@@ -8,6 +8,7 @@
  *   data-nss-here      this page belongs to the synced game
  *   data-nss-mounted   our panel is in place
  *   data-nss-fallback  ESPN's layout wasn't recognized; show only our panel
+ * and data-nss-keep on the elements that contain our panel.
  */
 
 /* ESPN's live scores ticker, on every page. */
@@ -19,10 +20,14 @@ html[data-nss-gamepage]:not([data-nss-ready]) body { visibility: hidden !importa
 /* Scoreboard cards stay hidden until we know which one to cover. */
 html[data-nss-on]:not([data-nss-ready]) section.Scoreboard { visibility: hidden !important; }
 
-/* The synced game's pages: ESPN's score strip and everything below the tabs go. */
-html[data-nss-here] .Gamestrip__StickyContainer { display: none !important; }
-html[data-nss-here] .Gamestrip__ContentOffset > :not(nav):not(#nss-strip):not(#nss-root) { display: none !important; }
-html[data-nss-here] .theme-nextGenGamecast > :not(:has(.next-gen-gamecast)) { display: none !important; }
+/*
+ * The synced game's pages. Every element from our panel up to ESPN's main content area is
+ * marked data-nss-keep; everything else in that area is hidden, except ESPN's game tabs.
+ * This doesn't depend on what ESPN calls its score strip, dock, sidebars and so on.
+ */
+html[data-nss-here] [data-nss-keep] > :not([data-nss-keep]):not(#nss-strip):not(#nss-root):not(.NavSecondary--GamePackage) {
+  display: none !important;
+}
 html[data-nss-here]:not([data-nss-mounted]) body { visibility: hidden !important; }
 html[data-nss-fallback] body > :not(#nss-strip):not(#nss-root) { display: none !important; }
 
@@ -79,7 +84,8 @@ html[data-nss-fallback] body > :not(#nss-strip):not(#nss-root) { display: none !
 #nss-strip .nss-linescore tbody th { text-align: left; color: var(--nss-text); }
 #nss-strip .nss-linescore .nss-total { color: var(--nss-text); font-weight: 700; }
 
-#nss-strip .nss-badge {
+#nss-strip .nss-badge,
+#nss-scorecard .nss-badge {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 10px;
@@ -146,3 +152,39 @@ html[data-nss-fallback] body > :not(#nss-strip):not(#nss-root) { display: none !
 #nss-strip .nss-logo { display: block; object-fit: contain; }
 
 html[data-nss-fallback] #nss-strip { margin-top: 0; }
+
+/* ---- Scoreboard card (sits over the synced game's hidden ESPN card) --------------- */
+
+#nss-scorecard {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  border-radius: inherit;
+  background: #fff;
+  color: #1d1e1f;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+}
+#nss-scorecard .nss-sc {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+}
+#nss-scorecard .nss-sc__teams { display: grid; gap: 8px; min-width: 140px; }
+#nss-scorecard .nss-sc__team { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+#nss-scorecard .nss-sc__abbr { font-weight: 700; }
+#nss-scorecard .nss-sc__score { margin-left: auto; padding-left: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#nss-scorecard .nss-sc__side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
+#nss-scorecard .nss-sc__status { font-weight: 700; color: #d00; }
+#nss-scorecard .nss-sc__note { display: flex; flex-direction: column; }
+#nss-scorecard .nss-sc__note span { color: #6c6d6f; font-size: 13px; }
+#nss-scorecard .nss-sc__links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 14px; }
+#nss-scorecard .nss-sc__links a { color: #06c; font-size: 13px; font-weight: 600; text-decoration: none; }
+#nss-scorecard .nss-sc__links a:hover { text-decoration: underline; }
+#nss-scorecard .nss-logo { display: block; object-fit: contain; }

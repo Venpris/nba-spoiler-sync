@@ -15,6 +15,10 @@
   let lastHref = location.href;
   let canMount = false;
   let rendered = { strip: null, body: null };
+  let renderedCard = null;
+  // Set when the spot we picked inside ESPN's layout turned out to be hidden; cleared on
+  // navigation.
+  let forceFallback = false;
 
   // Synchronous, before anything renders: the shield is on, and is this a game page?
   html.setAttribute('data-nss-on', '');
@@ -24,6 +28,7 @@
 
   function applyLocation() {
     lastHref = location.href;
+    forceFallback = false;
     html.toggleAttribute('data-nss-gamepage', Boolean(View.nbaGameIdFromUrl(location.href)));
     if (!configured) return;
     html.setAttribute('data-nss-ready', '');
@@ -46,28 +51,51 @@
     return el;
   }
 
+  // Where the panel goes: below ESPN's game tabs, inside the main content area. Null
+  // means show the panel on its own (unrecognized layout, or a page like the recap).
+  function inPageSpot() {
+    if (forceFallback) return null;
+    const offset = document.querySelector('.Gamestrip__ContentOffset');
+    const top = offset?.closest('#fittPageContainer, main');
+    return offset && top ? { parent: offset, top, nav: offset.querySelector(':scope > .NavSecondary--GamePackage') } : null;
+  }
+
+  // Mark every element from the panel up to the main content area. shield.css hides all
+  // other elements in that area, so whatever ESPN adds or renames there stays hidden.
+  function clearKeep() {
+    for (const el of document.querySelectorAll('[data-nss-keep]')) el.removeAttribute('data-nss-keep');
+  }
+
+  function markKeep(from, top) {
+    clearKeep();
+    for (let el = from.parentElement; el; el = el.parentElement) {
+      el.setAttribute('data-nss-keep', '');
+      if (el === top) break;
+    }
+  }
+
   // Put the strip and panel in place (again, if ESPN re-rendered over them).
   function mount() {
     if (!isHere() || !canMount || !document.body) return;
     const strip = element('nss-strip');
     const root = element('nss-root');
-    const offset = document.querySelector('.Gamestrip__ContentOffset');
+    const spot = inPageSpot();
     let moved = false;
-    if (offset) {
+    if (spot) {
       html.removeAttribute('data-nss-fallback');
-      const nav = offset.querySelector(':scope > nav');
-      if (strip.parentElement !== offset) {
-        offset.prepend(strip);
+      if (strip.parentElement !== spot.parent) {
+        spot.parent.prepend(strip);
         moved = true;
       }
-      if (root.parentElement !== offset || (nav && root.previousElementSibling !== nav)) {
-        if (nav) nav.after(root);
-        else strip.after(root);
+      const after = spot.nav || strip;
+      if (root.parentElement !== spot.parent || root.previousElementSibling !== after) {
+        after.after(root);
         moved = true;
       }
+      markKeep(root, spot.top);
     } else {
-      // Layout not recognized (an ESPN redesign, or a page like the recap): show only our panel.
       html.setAttribute('data-nss-fallback', '');
+      clearKeep();
       if (strip.parentElement !== document.body) {
         document.body.prepend(strip);
         moved = true;
@@ -80,11 +108,19 @@
     html.setAttribute('data-nss-mounted', '');
     if (moved) rendered = { strip: null, body: null };
     render();
+
+    // If something on ESPN's page still hides the spot we picked, the panel would vanish
+    // along with ESPN's content. Show it on its own instead.
+    if (spot && typeof root.checkVisibility === 'function' && !root.checkVisibility()) {
+      forceFallback = true;
+      mount();
+    }
   }
 
   function unmount() {
     document.getElementById('nss-strip')?.remove();
     document.getElementById('nss-root')?.remove();
+    clearKeep();
     html.removeAttribute('data-nss-mounted');
     html.removeAttribute('data-nss-fallback');
     rendered = { strip: null, body: null };
@@ -94,8 +130,7 @@
     const strip = document.getElementById('nss-strip');
     const root = document.getElementById('nss-root');
     if (!strip || !root) return false;
-    const offset = document.querySelector('.Gamestrip__ContentOffset');
-    const parent = offset || document.body;
+    const parent = inPageSpot()?.parent || document.body;
     return strip.parentElement === parent && root.parentElement === parent;
   }
 
@@ -116,7 +151,9 @@
     if (document.title !== title) document.title = title;
   }
 
-  // The synced game's card on scoreboard pages.
+  // The synced game's card on scoreboard pages: ESPN's content is hidden and our own card
+  // (synced score and links to the game's pages) sits on top. Until ours is in place the
+  // card just says it's hidden.
   function hideScoreboardCard() {
     if (!game || document.getElementById('nss-dynamic')) return;
     const card = `section.Scoreboard[id="${game.id}"]`;
@@ -124,12 +161,39 @@
     style.id = 'nss-dynamic';
     style.textContent = `
       ${card} { position: relative !important; }
-      ${card} > * { visibility: hidden !important; }
-      ${card}::after {
+      ${card} > :not(#nss-scorecard) { visibility: hidden !important; }
+      ${card}:not(:has(> #nss-scorecard))::after {
         content: "Hidden by Spoiler Sync"; position: absolute; inset: 0; display: flex;
         align-items: center; justify-content: center; font-weight: 600; color: #6c6d6f;
       }`;
     (document.head || html).appendChild(style);
+  }
+
+  function scoreboardCard() {
+    const card = game && document.getElementById(game.id);
+    return card && card.matches('section.Scoreboard') ? card : null;
+  }
+
+  function mountScoreCard() {
+    const card = canMount && scoreboardCard();
+    if (!card) return;
+    let el = document.getElementById('nss-scorecard');
+    if (el?.parentElement === card) return;
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'nss-scorecard';
+    }
+    card.append(el);
+    renderedCard = null;
+    renderScoreCard();
+  }
+
+  function renderScoreCard() {
+    const el = document.getElementById('nss-scorecard');
+    if (!el || !game) return;
+    const cardHtml = View.renderScoreCard(view, game);
+    if (cardHtml !== renderedCard) el.innerHTML = cardHtml;
+    renderedCard = cardHtml;
   }
 
   function onMessage(msg) {
@@ -138,10 +202,12 @@
       configured = true;
       if (!game) html.removeAttribute('data-nss-on');
       hideScoreboardCard();
+      mountScoreCard();
       applyLocation();
     } else if (msg?.type === 'view') {
       view = msg.view;
       render();
+      renderScoreCard();
     }
   }
 
@@ -172,12 +238,15 @@
       if (canMount && !isMounted()) mount();
       applyTitle();
     }
+    const card = canMount && scoreboardCard();
+    if (card && document.getElementById('nss-scorecard')?.parentElement !== card) mountScoreCard();
   }).observe(html, { childList: true, subtree: true });
 
   function allowMount() {
     setTimeout(() => {
       canMount = true;
       if (isHere()) mount();
+      mountScoreCard();
     }, MOUNT_DELAY_MS);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', allowMount, { once: true });

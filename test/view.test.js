@@ -48,6 +48,24 @@ test('strip says what is happening before stats are ready', () => {
   const ready = View.renderStrip({ status: 'ready', snapshot }, game);
   assert.match(ready, /Final/);
   assert.ok(ready.includes('nss-linescore'));
+
+  const at = (status) => View.renderStrip({ status: 'ready', snapshot: { ...snapshot, status: { state: 'in', ...status } } }, game);
+  assert.match(at({ period: 4, clock: '8:42', endOfPeriod: false }), /8:42 · 4th/);
+  assert.match(at({ period: 3, clock: '0.0', endOfPeriod: true }), /End of 3rd/);
+  assert.match(at({ period: 2, clock: '0.0', endOfPeriod: true }), /Halftime/);
+});
+
+test('scoreboard card: links always, score only when ready', () => {
+  const links = ['/nba/game/_/gameId/900000001', '/nba/boxscore/_/gameId/900000001', '/nba/playbyplay/_/gameId/900000001'];
+  for (const view of [null, { status: 'unsynced' }, { status: 'loading', readyInMs: 5000 }]) {
+    const html = View.renderScoreCard(view, game);
+    for (const href of links) assert.ok(html.includes(`href="${href}"`));
+    assert.ok(!html.includes('nss-sc__score'));
+  }
+  const ready = View.renderScoreCard({ status: 'ready', snapshot }, game);
+  assert.equal((ready.match(/nss-sc__score/g) || []).length, 2);
+  assert.match(ready, /Final/);
+  assert.match(View.renderScoreCard({ status: 'unsynced' }, { ...game, shortName: '<b>x</b>' }), /&lt;b&gt;x/);
 });
 
 test('page bodies: hidden until ready, then the right view per tab', () => {

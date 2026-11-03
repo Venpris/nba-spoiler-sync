@@ -66,6 +66,7 @@
     const s = snapshot.status || {};
     if (s.state === 'post') return esc(s.detail || 'Final');
     if (s.state === 'pre') return 'Not started';
+    if (s.endOfPeriod && s.period) return s.period === 2 ? 'Halftime' : `End of ${esc(periodLabel(s.period))}`;
     if (s.period && s.clock != null) return `${esc(s.clock)} · ${esc(periodLabel(s.period))}`;
     return esc(s.detail || '');
   }
@@ -223,6 +224,47 @@
     );
   }
 
+  // ---- Scoreboard card ------------------------------------------------------------
+
+  // Links to the synced game's own pages (which show synced stats too).
+  function gameLinks(gameId) {
+    return [
+      ['game', 'Gamecast'],
+      ['boxscore', 'Box Score'],
+      ['playbyplay', 'Play-by-Play'],
+    ]
+      .map(([page, label]) => `<a href="/nba/${page}/_/gameId/${esc(gameId)}">${label}</a>`)
+      .join('');
+  }
+
+  // Replaces the synced game's card on ESPN's scoreboard.
+  function renderScoreCard(view, game) {
+    const links = `<nav class="nss-sc__links">${gameLinks(game.id)}</nav>`;
+    const snapshot = view?.status === 'ready' ? view.snapshot : null;
+    const [away, home] = snapshot ? orderedTeams(snapshot) : [];
+    if (!away || !home) {
+      const note =
+        view?.status === 'loading'
+          ? 'Getting ready. The score appears once it matches your stream.'
+          : view?.status === 'unsynced'
+            ? 'Sync to your stream in the extension to see this game.'
+            : 'Hidden by Spoiler Sync.';
+      return `<div class="nss-sc nss-sc--message">
+        <div class="nss-sc__note"><strong>${esc(game.shortName || `${game.away} @ ${game.home}`)}</strong><span>${esc(note)}</span></div>
+        <div class="nss-sc__side">${links}<span class="nss-badge">Spoiler Sync</span></div>
+      </div>`;
+    }
+    const row = (team) => `<div class="nss-sc__team">${logo(team, 24)}<span class="nss-sc__abbr">${esc(team.abbrev)}</span><span class="nss-sc__score">${esc(team.score ?? '')}</span></div>`;
+    return `<div class="nss-sc">
+      <div class="nss-sc__teams">${row(away)}${row(home)}</div>
+      <div class="nss-sc__side">
+        <div class="nss-sc__status">${statusLine(snapshot)}</div>
+        ${links}
+        <span class="nss-badge">Synced to your stream</span>
+      </div>
+    </div>`;
+  }
+
   function card(title, body) {
     return `<section class="nss-card"><header class="nss-card__title"><span>${esc(title)}</span></header><div class="nss-card__body">${body}</div></section>`;
   }
@@ -246,5 +288,5 @@
     }
   }
 
-  globalThis.NSSView = { nbaGameIdFromUrl, pageKind, renderStrip, renderBody, renderBox, renderPlays, renderTeamStats, esc };
+  globalThis.NSSView = { nbaGameIdFromUrl, pageKind, renderStrip, renderBody, renderBox, renderPlays, renderTeamStats, renderScoreCard, esc };
 })();

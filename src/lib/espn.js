@@ -60,8 +60,25 @@ export function trimPlays(json) {
   }));
 }
 
+// Quarter and clock for a game in progress. ESPN's header clock normally runs live, but it
+// can get stuck (it once read 0.0 well into the 4th quarter), so it's only used when it
+// agrees with the latest play: same quarter, and no more time left than at that play.
+// Otherwise the latest play's quarter and clock are used.
+function gameClock(status, last) {
+  if (!last) return { period: status.period ?? null, clock: status.displayClock ?? null, endOfPeriod: false };
+  const headerSec = parseClock(String(status.displayClock ?? ''));
+  const lastSec = last.clockSec;
+  const agrees =
+    status.period === last.period && Number.isFinite(headerSec) && headerSec <= lastSec && !(headerSec === 0 && lastSec > 0);
+  return {
+    period: agrees ? status.period : last.period,
+    clock: agrees ? status.displayClock : last.clock,
+    endOfPeriod: last.type === 'End Period',
+  };
+}
+
 // The parts of ESPN's game state the ESPN-page panel shows. `plays` is the trimmed
-// play list from the same response, used to fill in period/clock when ESPN omits them.
+// play list from the same response, used to check and fill in the quarter and clock.
 export function trimSnapshot(json, plays = trimPlays(json)) {
   const comp = json.header?.competitions?.[0] || {};
   const status = comp.status || {};
@@ -110,8 +127,7 @@ export function trimSnapshot(json, plays = trimPlays(json)) {
     status: {
       state: status.type?.state ?? null, // 'pre' | 'in' | 'post'
       detail: status.type?.shortDetail ?? status.type?.detail ?? null,
-      period: status.period ?? last?.period ?? null,
-      clock: status.displayClock ?? last?.clock ?? null,
+      ...gameClock(status, last),
     },
     teams,
     box,

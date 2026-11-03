@@ -42,14 +42,36 @@ test('trimSnapshot keeps the box score and drops everything else', () => {
   assert.ok(!text.includes('headline'));
 });
 
-test('trimSnapshot falls back to the latest play for period and clock', () => {
-  const live = structuredClone(fixture);
-  live.header.competitions[0].status = { type: { state: 'in', shortDetail: '' } };
-  live.plays = live.plays.slice(0, 50);
-  const snap = trimSnapshot(live);
-  const last = live.plays.at(-1);
-  assert.equal(snap.status.period, last.period.number);
-  assert.equal(snap.status.clock, last.clock.displayValue);
+test('quarter and clock: ESPN header when it agrees with the plays, latest play when not', () => {
+  // The game as it stood a few minutes into the 4th quarter.
+  const cut = fixture.plays.findIndex((p) => p.period.number === 4 && p.type.text === 'Jump Shot' && p.clock.displayValue < '9');
+  const live = (headerStatus, upTo = cut) => {
+    const json = structuredClone(fixture);
+    json.plays = json.plays.slice(0, upTo + 1);
+    json.header.competitions[0].status = { ...headerStatus, type: { state: 'in', shortDetail: '' } };
+    return trimSnapshot(json).status;
+  };
+  const last = trimPlays(fixture)[cut];
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  // Header clock running a few seconds past the last play: trusted.
+  const running = fmt(last.clockSec - 5);
+  assert.deepEqual(live({ period: 4, displayClock: running }), { state: 'in', detail: '', period: 4, clock: running, endOfPeriod: false });
+
+  // Header stuck at the end of the previous quarter's 0.0: use the latest play.
+  assert.equal(live({ period: 4, displayClock: '0.0' }).clock, last.clock);
+  // Header clock showing more time than the last play, or a different quarter: same.
+  assert.equal(live({ period: 4, displayClock: fmt(last.clockSec + 30) }).clock, last.clock);
+  assert.equal(live({ period: 3, displayClock: '1:00' }).period, 4);
+  // No header clock at all.
+  assert.equal(live({}).clock, last.clock);
+
+  // Between quarters, even if the header has moved on, it reads as the end of the quarter.
+  const endOfThird = fixture.plays.findIndex((p) => p.period.number === 3 && p.type.text === 'End Period');
+  assert.deepEqual(
+    (({ period, endOfPeriod }) => ({ period, endOfPeriod }))(live({ period: 4, displayClock: '12:00' }, endOfThird)),
+    { period: 3, endOfPeriod: true },
+  );
 });
 
 test('skewSample measures server time minus local time', () => {

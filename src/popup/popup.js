@@ -78,6 +78,14 @@ function render() {
     detail += ` Your stream is about ${formatDuration(status.sync.delayMs)} behind ESPN.`;
   }
   if (on && status.error) detail = `${status.error} ${detail}`;
+
+  // The game's ESPN pages are shielded while on, so they're safe to link to at any time.
+  $('links').hidden = !(on && status.game);
+  if (on && status.game) {
+    for (const page of ['game', 'boxscore', 'playbyplay']) {
+      $(`link-${page}`).href = `https://www.espn.com/nba/${page}/_/gameId/${encodeURIComponent(status.game.id)}`;
+    }
+  }
   $('status-title').textContent = title;
   $('status-detail').textContent = detail;
   $('status').dataset.state = kind;
